@@ -38,36 +38,36 @@ pip install -e .
 
 ### Command Line Interface (CLI)
 
-The package provides a `phivolcs-scraper` command after installation.
+The package provides a `phivolcs-eq-data` command after installation.
 
 #### Basic usage (scrape current month)
 
 ```bash
-phivolcs-scraper
+phivolcs-eq-data
 ```
 
 #### Scrape a specific month and year
 
 ```bash
-phivolcs-scraper --month 8 --year 2025
+phivolcs-eq-data --month 8 --year 2025
 ```
 
 #### Specify custom output directory
 
 ```bash
-phivolcs-scraper --output-path my_data
+phivolcs-eq-data --output-path my_data
 ```
 
 #### Combine options
 
 ```bash
-phivolcs-scraper --month 9 --year 2025 --output-path archive
+phivolcs-eq-data --month 9 --year 2025 --output-path archive
 ```
 
 #### Get help
 
 ```bash
-phivolcs-scraper --help
+phivolcs-eq-data --help
 ```
 
 ### Python Library
@@ -137,7 +137,7 @@ This project uses `uv` for dependency management and packaging.
 uv sync
 
 # Run the scraper
-uv run phivolcs-scraper
+uv run phivolcs-eq-data
 ```
 
 ## License
