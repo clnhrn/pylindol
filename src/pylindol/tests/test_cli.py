@@ -3,7 +3,7 @@
 import responses
 from click.testing import CliRunner
 
-from phivolcs_eq_data.cli import main
+from pylindol.cli import main
 
 
 class TestCLI:
