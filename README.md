@@ -1,5 +1,7 @@
 # PHIVOLCS Earthquake Data Scraper
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 A tool to scrape earthquake information from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website.
 
 This allows you to download earthquake data for the current month or historical data from specific months and years, saving the results as CSV files.
