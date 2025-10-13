@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 
 from pylindol.config.paths import CA_CERTIFICATE_PATH
+from pylindol.utils.certificate_handler import CertificateHandler
 
 
 class PhivolcsEarthquakeInfoScraper:
@@ -37,6 +38,7 @@ class PhivolcsEarthquakeInfoScraper:
 
         self.base_url = "https://earthquake.phivolcs.dost.gov.ph"
         self.output_path = output_path
+        self.certificate_handler = None
 
         if month is not None and year is None:
             raise ValueError("If month is provided, year must also be provided.")
@@ -54,6 +56,31 @@ class PhivolcsEarthquakeInfoScraper:
         else:
             self.month = datetime.now().month
             self.year = datetime.now().year
+
+        # Setup certificates before running any requests
+        self._setup_certificates()
+
+    def _setup_certificates(self):
+        """
+        Setup certificate handler and append CA certificates to certifi bundle.
+        """
+        try:
+            self.certificate_handler = CertificateHandler()
+
+            # Check if the CA certificate file exists and add it
+            if CA_CERTIFICATE_PATH.exists():
+                logger.info(f"Adding CA certificate: {CA_CERTIFICATE_PATH}")
+                self.certificate_handler.add_certificate(CA_CERTIFICATE_PATH)
+                logger.info("CA certificate successfully added to certifi bundle")
+            else:
+                logger.warning(f"CA certificate file not found: {CA_CERTIFICATE_PATH}")
+                logger.info(
+                    "Using default certifi bundle without custom CA certificates"
+                )
+
+        except Exception as e:
+            logger.error(f"Error setting up certificates: {e}")
+            logger.warning("Continuing with default certifi bundle")
 
     def _validate_month_input(self, month: int) -> int:
         """
@@ -85,7 +112,17 @@ class PhivolcsEarthquakeInfoScraper:
         """
         try:
             with requests.Session() as session:
-                response = session.get(self.base_url, verify=CA_CERTIFICATE_PATH)
+                # Use certificate handler if available
+                if (
+                    self.certificate_handler
+                    and self.certificate_handler.custom_certificates
+                ):
+                    bundle_path = self.certificate_handler.get_bundle_path()
+                    logger.info(f"Using combined certificate bundle: {bundle_path}")
+                    response = session.get(self.base_url, verify=str(bundle_path))
+                else:
+                    logger.info("Using default certifi bundle")
+                    response = session.get(self.base_url)
                 response.raise_for_status()
                 return response.content
         except Exception as e:
@@ -101,7 +138,17 @@ class PhivolcsEarthquakeInfoScraper:
         """
         try:
             with requests.Session() as session:
-                response = session.get(self.month_url, verify=CA_CERTIFICATE_PATH)
+                # Use certificate handler if available
+                if (
+                    self.certificate_handler
+                    and self.certificate_handler.custom_certificates
+                ):
+                    bundle_path = self.certificate_handler.get_bundle_path()
+                    logger.info(f"Using combined certificate bundle: {bundle_path}")
+                    response = session.get(self.month_url, verify=str(bundle_path))
+                else:
+                    logger.info("Using default certifi bundle")
+                    response = session.get(self.month_url)
                 response.raise_for_status()
                 return response.content
         except Exception as e:
