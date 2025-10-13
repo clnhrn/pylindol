@@ -77,7 +77,7 @@ You can also use the scraper programmatically in your Python code.
 #### Import the class
 
 ```python
-from phivolcs_scraper import PhivolcsEarthquakeInfoScraper
+from phivolcs_eq_data import PhivolcsEarthquakeInfoScraper
 ```
 
 #### Scrape current month
