@@ -1,0 +1,41 @@
+[project]
+name = "phivolcs-eq-data"
+version = "0.1.0"
+description = "A tool to download earthquake report information from the Philippine Institute of Volcanology and Seismology (PHIVOLCS) website."
+readme = "README.md"
+authors = [
+    { name = "clnhrn", email = "herniacln@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.14.2",
+    "certifi>=2024.0.0",
+    "click>=8.1.8",
+    "loguru>=0.7.3",
+    "lxml>=6.0.2",
+    "pandas>=2.3.3",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+phivolcs-scraper = "phivolcs_scraper.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "coverage-badge>=1.1.2",
+    "pytest>=8.0.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.12.0",
+    "responses>=0.25.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["src/phivolcs_eq_data/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
