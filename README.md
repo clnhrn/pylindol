@@ -1,10 +1,8 @@
-# PHIVOLCS Earthquake Data Scraper
+# pylindol
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-A tool to scrape earthquake information from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website.
-
-This allows you to download earthquake data for the current month or historical data from specific months and years, saving the results as CSV files.
+pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects
 
 ## Requirements
 
@@ -15,7 +13,7 @@ This allows you to download earthquake data for the current month or historical 
 
 ### Clone the repository
 ```bash
-git clone git@github.com:clnhrn/phivolcs-eq-data.git
+git clone git@github.com:clnhrn/pylindol.git
 ```
 
 ## Installation
@@ -55,36 +53,36 @@ pip install -e .
 
 ### Command Line Interface (CLI)
 
-The package provides the `phivolcs-eq-data` command after installation.
+The package provides the `pylindol` command after installation.
 
 #### Basic usage (scrape current month)
 
 ```bash
-phivolcs-eq-data
+pylindol
 ```
 
 #### Scrape a specific month and year
 
 ```bash
-phivolcs-eq-data --month 8 --year 2025
+pylindol --month 8 --year 2025
 ```
 
 #### Specify custom output directory
 
 ```bash
-phivolcs-eq-data --output-path my_data
+pylindol --output-path my_data
 ```
 
 #### Combine options
 
 ```bash
-phivolcs-eq-data --month 9 --year 2025 --output-path archive
+pylindol --month 9 --year 2025 --output-path archive
 ```
 
 #### Get help
 
 ```bash
-phivolcs-eq-data --help
+pylindol --help
 ```
 
 ### Python Library
@@ -94,7 +92,7 @@ You can also use the scraper as a Python library in your code.
 #### Import the class
 
 ```python
-from phivolcs_eq_data import PhivolcsEarthquakeInfoScraper
+from pylindol import PhivolcsEarthquakeInfoScraper
 ```
 
 #### Scrape current month
