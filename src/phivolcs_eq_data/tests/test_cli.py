@@ -1,8 +1,9 @@
 """Tests for the CLI interface."""
 
-from click.testing import CliRunner
-from phivolcs_eq_data.cli import main
 import responses
+from click.testing import CliRunner
+
+from phivolcs_eq_data.cli import main
 
 
 class TestCLI:

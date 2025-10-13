@@ -1,5 +1,5 @@
 import click
-from loguru import logger
+
 from phivolcs_eq_data.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
 
 

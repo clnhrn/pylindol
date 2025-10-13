@@ -1,11 +1,13 @@
-from loguru import logger
-from pathlib import Path
-from datetime import datetime, date
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+from datetime import date, datetime
 from io import StringIO
+from pathlib import Path
 from typing import Optional
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from loguru import logger
+
 from phivolcs_eq_data.config.paths import CA_CERTIFICATE_PATH
 
 
@@ -49,13 +51,9 @@ class PhivolcsEarthquakeInfoScraper:
                 f"{self.base_url}/EQLatest-Monthly/{self.year}/"
                 f"{self.year}_{month_name}.html"
             )
-            logger.info(f"Scraping month {self.month} of year {self.year}")
         else:
             self.month = datetime.now().month
             self.year = datetime.now().year
-            logger.info(
-                f"Scraping main (current month) page: {self.month} of {self.year}"
-            )
 
     def _validate_month_input(self, month: int) -> int:
         """
@@ -174,6 +172,10 @@ class PhivolcsEarthquakeInfoScraper:
                 )
             )
         elif self.month == datetime.now().month and self.year == datetime.now().year:
+            logger.info(
+                f"Scraping main (current month) page: {self.month} of {self.year}"
+            )
             self._run_main_scrape()
         else:
+            logger.info(f"Scraping month {self.month} of year {self.year}")
             self._run_month_scrape()
