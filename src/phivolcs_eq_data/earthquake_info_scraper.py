@@ -1,11 +1,13 @@
-from loguru import logger
-from pathlib import Path
-from datetime import datetime, date
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+from datetime import date, datetime
 from io import StringIO
+from pathlib import Path
 from typing import Optional
+
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from loguru import logger
+
 from phivolcs_eq_data.config.paths import CA_CERTIFICATE_PATH
 
 

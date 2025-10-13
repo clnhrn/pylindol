@@ -1,12 +1,12 @@
 """Tests for the PhivolcsEarthquakeInfoScraper class."""
 
+from datetime import datetime
+
+import pandas as pd
 import pytest
 import responses
-import pandas as pd
-from datetime import datetime
-from phivolcs_eq_data.earthquake_info_scraper import (
-    PhivolcsEarthquakeInfoScraper,
-)
+
+from phivolcs_eq_data.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
 
 
 class TestPhivolcsEarthquakeInfoScraperInit:
