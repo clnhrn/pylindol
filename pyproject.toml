@@ -1,5 +1,5 @@
 [project]
-name = "phivolcs-eq-data"
+name = "pylindol"
 version = "0.1.0"
 description = "A tool to download earthquake report information from the Philippine Institute of Volcanology and Seismology (PHIVOLCS) website."
 readme = "README.md"
@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-phivolcs-eq-data = "phivolcs_eq_data.cli:main"
+pylindol = "pylindol.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9"]
@@ -36,7 +36,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["src/phivolcs_eq_data/tests"]
+testpaths = ["src/pylindol/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

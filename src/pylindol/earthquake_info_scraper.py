@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from loguru import logger
 
-from phivolcs_eq_data.config.paths import CA_CERTIFICATE_PATH
+from pylindol.config.paths import CA_CERTIFICATE_PATH
 
 
 class PhivolcsEarthquakeInfoScraper:

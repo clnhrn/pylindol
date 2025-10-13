@@ -1,7 +1,9 @@
 # pylindol
+# pylindol
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects
 pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects
 
 ## Requirements
@@ -43,10 +45,12 @@ uv add pylindol
 ### Command Line Interface (CLI)
 
 The package provides the `pylindol` command after installation.
+The package provides the `pylindol` command after installation.
 
 #### Basic usage (scrape current month)
 
 ```bash
+pylindol
 pylindol
 ```
 
@@ -54,11 +58,13 @@ pylindol
 
 ```bash
 pylindol --month 8 --year 2025
+pylindol --month 8 --year 2025
 ```
 
 #### Specify custom output directory
 
 ```bash
+pylindol --output-path my_data
 pylindol --output-path my_data
 ```
 
@@ -66,11 +72,13 @@ pylindol --output-path my_data
 
 ```bash
 pylindol --month 9 --year 2025 --output-path archive
+pylindol --month 9 --year 2025 --output-path archive
 ```
 
 #### Get help
 
 ```bash
+pylindol --help
 pylindol --help
 ```
 
@@ -81,6 +89,7 @@ You can also use the scraper as a Python library in your code.
 #### Import the class
 
 ```python
+from pylindol import PhivolcsEarthquakeInfoScraper
 from pylindol import PhivolcsEarthquakeInfoScraper
 ```
 
