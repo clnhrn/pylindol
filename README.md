@@ -24,7 +24,16 @@ If you don't have `uv` installed yet, follow the installation steps here: https:
 
 ### Using uv (recommended)
 
+uv automatically creates a virtual environment with Python 3.13 and installs all dependencies:
+
 ```bash
+# This creates a .venv with Python 3.13 and installs dependencies
+uv sync
+
+# Or, if you want to manually create the venv first:
+uv venv --python 3.13
+source .venv/bin/activate  # On macOS/Linux
+# .venv\Scripts\activate   # On Windows
 uv sync
 ```
 
