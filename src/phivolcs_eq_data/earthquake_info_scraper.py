@@ -51,13 +51,9 @@ class PhivolcsEarthquakeInfoScraper:
                 f"{self.base_url}/EQLatest-Monthly/{self.year}/"
                 f"{self.year}_{month_name}.html"
             )
-            logger.info(f"Scraping month {self.month} of year {self.year}")
         else:
             self.month = datetime.now().month
             self.year = datetime.now().year
-            logger.info(
-                f"Scraping main (current month) page: {self.month} of {self.year}"
-            )
 
     def _validate_month_input(self, month: int) -> int:
         """
@@ -176,6 +172,10 @@ class PhivolcsEarthquakeInfoScraper:
                 )
             )
         elif self.month == datetime.now().month and self.year == datetime.now().year:
+            logger.info(
+                f"Scraping main (current month) page: {self.month} of {self.year}"
+            )
             self._run_main_scrape()
         else:
+            logger.info(f"Scraping month {self.month} of year {self.year}")
             self._run_month_scrape()
