@@ -7,7 +7,7 @@ license = {text = "MIT"}
 authors = [
     { name = "clnhrn", email = "herniacln@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.14.2",
     "certifi>=2024.0.0",

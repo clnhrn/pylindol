@@ -1,41 +1,24 @@
 # pylindol
+# pylindol
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects
 pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects
 
 ## Requirements
 
 - Python >= 3.13
-- Dependencies: beautifulsoup4, certifi, click, loguru, lxml, pandas, requests
-
-## Setup
-
-### Clone the repository
-```bash
-git clone git@github.com:clnhrn/pylindol.git
-```
 
 ## Installation
 
-If you don't have `uv` installed yet, follow the installation steps here: https://docs.astral.sh/uv/getting-started/installation/
-
-### Using uv (recommended)
-
-uv automatically creates a virtual environment with Python 3.13 and installs all dependencies:
+Install pylindol directly from PyPI:
 
 ```bash
-# This creates a .venv with Python 3.13 and installs dependencies
-uv sync
-
-# Activate the virtual environment
-source .venv/bin/activate  # On macOS/Linux
-# .venv\Scripts\activate   # On Windows
+pip install pylindol
 ```
 
-### Using pip
-
-This approach requires Python 3.13 to be installed.
+### Using a virtual environment (recommended)
 
 ```bash
 # Create a virtual environment
@@ -45,8 +28,16 @@ python3 -m venv .venv
 source .venv/bin/activate  # On macOS/Linux
 # .venv\Scripts\activate   # On Windows
 
-# Install the dependencies in editable mode
-pip install -e .
+# Install pylindol
+pip install pylindol
+```
+
+### Using uv
+
+If you prefer using `uv` for faster package management:
+
+```bash
+uv add pylindol
 ```
 
 ## Usage
@@ -54,10 +45,12 @@ pip install -e .
 ### Command Line Interface (CLI)
 
 The package provides the `pylindol` command after installation.
+The package provides the `pylindol` command after installation.
 
 #### Basic usage (scrape current month)
 
 ```bash
+pylindol
 pylindol
 ```
 
@@ -65,11 +58,13 @@ pylindol
 
 ```bash
 pylindol --month 8 --year 2025
+pylindol --month 8 --year 2025
 ```
 
 #### Specify custom output directory
 
 ```bash
+pylindol --output-path my_data
 pylindol --output-path my_data
 ```
 
@@ -77,11 +72,13 @@ pylindol --output-path my_data
 
 ```bash
 pylindol --month 9 --year 2025 --output-path archive
+pylindol --month 9 --year 2025 --output-path archive
 ```
 
 #### Get help
 
 ```bash
+pylindol --help
 pylindol --help
 ```
 
@@ -92,6 +89,7 @@ You can also use the scraper as a Python library in your code.
 #### Import the class
 
 ```python
+from pylindol import PhivolcsEarthquakeInfoScraper
 from pylindol import PhivolcsEarthquakeInfoScraper
 ```
 
@@ -142,3 +140,19 @@ phivolcs_earthquake_data_{month}_{year}.csv
 **Example:** `data/phivolcs_earthquake_data_10_2025.csv`
 
 The CSV files contain earthquake information including date, time, magnitude, location, and depth.
+
+## Development
+
+If you want to contribute to pylindol or run it from source:
+
+```bash
+# Clone the repository
+git clone git@github.com:clnhrn/pylindol.git
+cd pylindol
+
+# Install in development mode
+pip install -e .
+
+# Or using uv
+uv sync
+```
