@@ -30,16 +30,24 @@ uv automatically creates a virtual environment with Python 3.13 and installs all
 # This creates a .venv with Python 3.13 and installs dependencies
 uv sync
 
-# Or, if you want to manually create the venv first:
-uv venv --python 3.13
+# Activate the virtual environment
 source .venv/bin/activate  # On macOS/Linux
 # .venv\Scripts\activate   # On Windows
-uv sync
 ```
 
 ### Using pip
 
+This approach requires Python 3.13 to be installed.
+
 ```bash
+# Create a virtual environment
+python3 -m venv .venv
+
+# Activate the virtual environment
+source .venv/bin/activate  # On macOS/Linux
+# .venv\Scripts\activate   # On Windows
+
+# Install the dependencies in editable mode
 pip install -e .
 ```
 
@@ -47,7 +55,7 @@ pip install -e .
 
 ### Command Line Interface (CLI)
 
-The package provides a `phivolcs-eq-data` command after installation.
+The package provides the `phivolcs-eq-data` command after installation.
 
 #### Basic usage (scrape current month)
 
@@ -81,7 +89,7 @@ phivolcs-eq-data --help
 
 ### Python Library
 
-You can also use the scraper programmatically in your Python code.
+You can also use the scraper as a Python library in your code.
 
 #### Import the class
 
@@ -119,7 +127,7 @@ scraper.run()
 - ✅ Scrape current month's earthquake data
 - ✅ Scrape historical data by month and year
 - ✅ Automatic CA certificate handling for SSL connections
-- ✅ Input validation (month range, year validation, future date prevention)
+- ✅ Input validation (month range, year validation, and future date prevention)
 - ✅ Export data to CSV format
 - ✅ Structured logging with loguru
 
