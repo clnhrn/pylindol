@@ -127,24 +127,3 @@ phivolcs_earthquake_data_{month}_{year}.csv
 **Example:** `data/phivolcs_earthquake_data_10_2025.csv`
 
 The CSV files contain earthquake information including date, time, magnitude, location, and depth.
-
-## Development
-
-This project uses `uv` for dependency management and packaging.
-
-```bash
-# Install development dependencies
-uv sync
-
-# Run the scraper
-uv run phivolcs-eq-data
-```
-
-## License
-
-This project is licensed under the terms specified in the package metadata.
-
-## Author
-
-clnhrn (herniacln@gmail.com)
-
