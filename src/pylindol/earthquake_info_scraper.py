@@ -26,6 +26,7 @@ class PhivolcsEarthquakeInfoScraper:
         month: Optional[int] = None,
         year: Optional[int] = None,
         output_path: Optional[str] = "data",
+        export_to_csv: Optional[bool] = True,
     ):
         """
         Initialize the scraper.
@@ -34,10 +35,12 @@ class PhivolcsEarthquakeInfoScraper:
             month: The month to scrape.
             year: The year to scrape.
             output_path: The path to export the dataframe.
+            export_to_csv: Whether to export the dataframe to a CSV file.
         """
 
         self.base_url = "https://earthquake.phivolcs.dost.gov.ph"
         self.output_path = output_path
+        self.export_to_csv = export_to_csv
         self.certificate_handler = None
 
         if month is not None and year is None:
@@ -185,28 +188,41 @@ class PhivolcsEarthquakeInfoScraper:
         df.to_csv(file_name, index=False)
         logger.info(f"Exported data to {file_name}")
 
-    def _run_main_scrape(self):
+    def _run_main_scrape(self) -> pd.DataFrame:
         """
         Run the scraper for the main page.
+
+        Returns:
+            pd.DataFrame: The dataframe containing the earthquake data
+            from the main page.
         """
         page = self.extract_main_page()
         table = self.extract_target_table(page)
-        self._export_to_csv(table)
+        if self.export_to_csv:
+            self._export_to_csv(table)
+        return table
 
-    def _run_month_scrape(self):
+    def _run_month_scrape(self) -> pd.DataFrame:
         """
         Run the scraper for the month page.
+
+        Returns:
+            pd.DataFrame: The dataframe containing the earthquake data
+            from the month page.
         """
         page = self.extract_month_page()
         table = self.extract_target_table(page)
-        self._export_to_csv(table)
+        if self.export_to_csv:
+            self._export_to_csv(table)
+        return table
 
-    def run(self):
+    def run(self) -> pd.DataFrame:
         """
         Run the scraper.
 
-        Args:
-            output_path: The path to export the dataframe.
+        Returns:
+            pd.DataFrame: The dataframe containing the earthquake data
+            from the main page or the month page.
         """
         target_date = date(self.year, self.month, 1)
         current_date = date.today().replace(day=1)
@@ -222,7 +238,7 @@ class PhivolcsEarthquakeInfoScraper:
             logger.info(
                 f"Scraping main (current month) page: {self.month} of {self.year}"
             )
-            self._run_main_scrape()
+            return self._run_main_scrape()
         else:
             logger.info(f"Scraping month {self.month} of year {self.year}")
-            self._run_month_scrape()
+            return self._run_month_scrape()
