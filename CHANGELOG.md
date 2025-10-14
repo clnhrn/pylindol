@@ -1,3 +1,9 @@
+## 0.3.0 (2025-10-15)
+
+### Feat
+
+- make csv export optional
+
 ## 0.2.0 (2025-10-15)
 
 ### Feat
