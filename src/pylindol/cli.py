@@ -1,6 +1,8 @@
 import click
 
-from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
+from pylindol.sources.phivolcs.scraper import (
+    PhivolcsEarthquakeInfoScraper,
+)
 
 
 @click.command()

@@ -6,7 +6,9 @@ import pandas as pd
 import pytest
 import responses
 
-from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
+from pylindol.sources.phivolcs.scraper import (
+    PhivolcsEarthquakeInfoScraper,
+)
 
 
 class TestPhivolcsEarthquakeInfoScraperInit:
