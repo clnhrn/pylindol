@@ -8,6 +8,10 @@ jobs:
   bump:
     runs-on: ubuntu-latest
 
+    # Skip the run triggered by merging a bump PR (its head commit is the
+    # bump commit), so we never loop.
+    if: ${{ !startsWith(github.event.head_commit.message, 'bump:') }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -33,15 +37,40 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Bump version
+    - name: Bump version on a release branch
       id: bump
       run: |
-        uvx --from commitizen cz bump --yes \
-          && echo "bumped=true" >> $GITHUB_OUTPUT \
-          || (EXIT=$?; [ $EXIT -eq 21 ] \
-            && echo "bumped=false" >> $GITHUB_OUTPUT \
-            || exit $EXIT)
+        git switch -c bump-tmp
+        if uvx --from commitizen cz bump --yes; then
+          NEW_VERSION=$(uvx --from commitizen cz version --project)
+          git branch -m "release/$NEW_VERSION"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        else
+          EXIT=$?
+          # 21 = NoneIncrementExit: no commits warranted a bump.
+          if [ "$EXIT" -eq 21 ]; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            exit "$EXIT"
+          fi
+        fi
 
-    - name: Push commit and tag
+    - name: Push tag
       if: steps.bump.outputs.bumped == 'true'
-      run: git push --follow-tags
+      run: git push origin "${{ steps.bump.outputs.version }}"
+
+    - name: Push branch and open PR
+      if: steps.bump.outputs.bumped == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      run: |
+        VERSION="${{ steps.bump.outputs.version }}"
+        git push origin "release/$VERSION"
+        gh pr create \
+          --base main \
+          --head "release/$VERSION" \
+          --title "bump: version $VERSION" \
+          --body "Automated version bump to \`$VERSION\`. Tag \`$VERSION\` is already pushed and publishing to PyPI."
+        gh pr merge "release/$VERSION" --auto --merge \
+          || echo "Auto-merge unavailable; merge the PR manually."
