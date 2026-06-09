@@ -1,3 +1,12 @@
+## 0.4.1 (2026-06-09)
+
+### Fix
+
+- open a PR for version bumps instead of pushing to protected main
+- create annotated tags so they push to remote
+- remove unreliable if condition from bump workflow
+- fetch tags explicitly before commitizen bump
+
 ## 0.4.0 (2026-06-09)
 
 ### Feat
