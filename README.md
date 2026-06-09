@@ -1,7 +1,7 @@
 # pylindol
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![PyPI version](https://badge.fury.io/py/pylindol.svg)
+![PyPI version](https://img.shields.io/pypi/v/pylindol)
 
 pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects.
 
