@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -32,3 +32,11 @@ jobs:
 
     - name: Publish to PyPI
       run: uv publish --trusted-publishing always
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        VERSION="${GITHUB_REF_NAME}"
+        NOTES=$(uvx --from commitizen cz changelog "$VERSION" --dry-run)
+        gh release create "$VERSION" dist/* --title "$VERSION" --notes "$NOTES"
