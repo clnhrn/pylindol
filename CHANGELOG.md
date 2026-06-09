@@ -1,3 +1,9 @@
+## 0.5.1 (2026-06-09)
+
+### Fix
+
+- show friendly error when earthquake data is unavailable
+
 ## 0.5.0 (2026-06-09)
 
 ### Feat
