@@ -1,3 +1,13 @@
+## 0.4.0 (2026-06-09)
+
+### Feat
+
+- add separate Date and Time columns to CSV output
+
+### Fix
+
+- update CLI test mock HTML to use correct datetime column header
+
 ## 0.3.0 (2025-10-15)
 
 ### Feat
