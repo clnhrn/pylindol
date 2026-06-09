@@ -162,9 +162,9 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
                 <table><tr><td>Table 1</td></tr></table>
                 <table><tr><td>Table 2</td></tr></table>
                 <table>
-                    <tr><th>Date</th><th>Magnitude</th></tr>
-                    <tr><td>2025-10-01</td><td>5.0</td></tr>
-                    <tr><td>2025-10-02</td><td>4.5</td></tr>
+                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
+                    <tr><td>2025-10-01 10:00:00</td><td>5.0</td></tr>
+                    <tr><td>2025-10-02 11:30:00</td><td>4.5</td></tr>
                 </table>
             </body>
         </html>
@@ -200,8 +200,8 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
                 <table><tr><td>Table 1</td></tr></table>
                 <table><tr><td>Table 2</td></tr></table>
                 <table>
-                    <tr><th>Date</th><th>Magnitude</th></tr>
-                    <tr><td>2025-08-01</td><td>5.0</td></tr>
+                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
+                    <tr><td>2025-08-01 09:15:00</td><td>5.0</td></tr>
                 </table>
             </body>
         </html>
@@ -232,6 +232,56 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
         assert expected_file.exists()
 
 
+DATETIME_COL = "Date - Time  (Philippine Time)"
+
+
+class TestPhivolcsEarthquakeInfoScraperAddDatetimeColumns:
+    """Test _add_datetime_columns method."""
+
+    def _make_df(self, datetime_values: list[str]) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                DATETIME_COL: datetime_values,
+                "Mag": [5.0] * len(datetime_values),
+            }
+        )
+
+    def test_adds_date_and_time_columns_iso_format(self):
+        """ISO datetime string splits into correct Date and Time values."""
+        scraper = PhivolcsEarthquakeInfoScraper()
+        df = self._make_df(["2025-09-09 23:57:00"])
+        result = scraper._add_datetime_columns(df)
+        assert result["Date"].iloc[0] == "2025-09-09"
+        assert result["Time"].iloc[0] == "23:57:00"
+
+    def test_adds_date_and_time_columns_human_format(self):
+        """Human-readable datetime string splits into correct Date and Time values."""
+        scraper = PhivolcsEarthquakeInfoScraper()
+        df = self._make_df(["15 October 2025 - 10:41 PM"])
+        result = scraper._add_datetime_columns(df)
+        assert result["Date"].iloc[0] == "2025-10-15"
+        assert result["Time"].iloc[0] == "22:41:00"
+
+    def test_new_columns_inserted_after_datetime_column(self):
+        """Date and Time columns appear immediately after the combined column."""
+        scraper = PhivolcsEarthquakeInfoScraper()
+        df = self._make_df(["2025-09-09 23:57:00"])
+        result = scraper._add_datetime_columns(df)
+        cols = list(result.columns)
+        idx = cols.index(DATETIME_COL)
+        assert cols[idx + 1] == "Date"
+        assert cols[idx + 2] == "Time"
+
+    def test_original_datetime_column_preserved(self):
+        """The original combined datetime column is not removed or modified."""
+        scraper = PhivolcsEarthquakeInfoScraper()
+        original_value = "2025-09-09 23:57:00"
+        df = self._make_df([original_value])
+        result = scraper._add_datetime_columns(df)
+        assert DATETIME_COL in result.columns
+        assert result[DATETIME_COL].iloc[0] == original_value
+
+
 class TestPhivolcsEarthquakeInfoScraperExportToCSV:
     """Test export_to_csv functionality."""
 
@@ -244,9 +294,9 @@ class TestPhivolcsEarthquakeInfoScraperExportToCSV:
                 <table><tr><td>Table 1</td></tr></table>
                 <table><tr><td>Table 2</td></tr></table>
                 <table>
-                    <tr><th>Date</th><th>Magnitude</th></tr>
-                    <tr><td>2025-10-01</td><td>5.0</td></tr>
-                    <tr><td>2025-10-02</td><td>4.5</td></tr>
+                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
+                    <tr><td>2025-10-01 10:00:00</td><td>5.0</td></tr>
+                    <tr><td>2025-10-02 11:30:00</td><td>4.5</td></tr>
                 </table>
             </body>
         </html>
@@ -284,8 +334,8 @@ class TestPhivolcsEarthquakeInfoScraperExportToCSV:
                 <table><tr><td>Table 1</td></tr></table>
                 <table><tr><td>Table 2</td></tr></table>
                 <table>
-                    <tr><th>Date</th><th>Magnitude</th></tr>
-                    <tr><td>2025-08-01</td><td>5.0</td></tr>
+                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
+                    <tr><td>2025-08-01 09:15:00</td><td>5.0</td></tr>
                 </table>
             </body>
         </html>

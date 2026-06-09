@@ -172,6 +172,24 @@ class PhivolcsEarthquakeInfoScraper:
         tables = pd.read_html(StringIO(soup.prettify()))
         return tables[2]
 
+    def _add_datetime_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Add separate Date and Time columns derived from the combined datetime column.
+
+        Args:
+            df: DataFrame with a `Date - Time  (Philippine Time)` column.
+
+        Returns:
+            A copy of the DataFrame with `Date` and `Time` columns inserted
+            immediately after the combined datetime column.
+        """
+        datetime_col = next(c for c in df.columns if c.startswith("Date - Time"))
+        parsed = pd.to_datetime(df[datetime_col], format="mixed")
+        idx = df.columns.get_loc(datetime_col)
+        df = df.copy()
+        df.insert(idx + 1, "Date", parsed.dt.strftime("%Y-%m-%d"))
+        df.insert(idx + 2, "Time", parsed.dt.strftime("%H:%M:%S"))
+        return df
+
     def _export_to_csv(self, df: pd.DataFrame):
         """
         Export the dataframe to a CSV file.
@@ -198,6 +216,7 @@ class PhivolcsEarthquakeInfoScraper:
         """
         page = self.extract_main_page()
         table = self.extract_target_table(page)
+        table = self._add_datetime_columns(table)
         if self.export_to_csv:
             self._export_to_csv(table)
         return table
@@ -212,6 +231,7 @@ class PhivolcsEarthquakeInfoScraper:
         """
         page = self.extract_month_page()
         table = self.extract_target_table(page)
+        table = self._add_datetime_columns(table)
         if self.export_to_csv:
             self._export_to_csv(table)
         return table
