@@ -6,7 +6,10 @@ import pandas as pd
 import pytest
 import responses
 
-from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
+from pylindol.earthquake_info_scraper import (
+    DataNotAvailableError,
+    PhivolcsEarthquakeInfoScraper,
+)
 
 
 class TestPhivolcsEarthquakeInfoScraperInit:
@@ -280,6 +283,15 @@ class TestPhivolcsEarthquakeInfoScraperAddDatetimeColumns:
         result = scraper._add_datetime_columns(df)
         assert DATETIME_COL in result.columns
         assert result[DATETIME_COL].iloc[0] == original_value
+
+    def test_raises_data_not_available_when_no_datetime_column(self):
+        """Unavailable months yield a table with integer columns (no parsed header)."""
+        scraper = PhivolcsEarthquakeInfoScraper(month=1, year=2017)
+        # Mirrors what PHIVOLCS returns for old months: header text sits in the
+        # data and pandas falls back to integer column labels.
+        df = pd.DataFrame([["Date - Time  (Philippine Time)", "Mag"]])
+        with pytest.raises(DataNotAvailableError, match="not available"):
+            scraper._add_datetime_columns(df)
 
 
 class TestPhivolcsEarthquakeInfoScraperExportToCSV:

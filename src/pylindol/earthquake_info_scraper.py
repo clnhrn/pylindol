@@ -12,6 +12,10 @@ from pylindol.config.paths import CA_CERTIFICATE_PATH
 from pylindol.utils.certificate_handler import CertificateHandler
 
 
+class DataNotAvailableError(Exception):
+    """Raised when PHIVOLCS has no earthquake data for the requested month."""
+
+
 class PhivolcsEarthquakeInfoScraper:
     """
     This class is used to scrape the latest earthquake information from the
@@ -182,7 +186,18 @@ class PhivolcsEarthquakeInfoScraper:
             A copy of the DataFrame with `Date` and `Time` columns inserted
             immediately after the combined datetime column.
         """
-        datetime_col = next(c for c in df.columns if c.startswith("Date - Time"))
+        datetime_col = next(
+            (c for c in df.columns if isinstance(c, str) and c.startswith("Date - Time")),
+            None,
+        )
+        if datetime_col is None:
+            # Old/unavailable months return a placeholder table with no parsed
+            # header, so the datetime column never appears.
+            month_name = datetime(self.year, self.month, 1).strftime("%B")
+            raise DataNotAvailableError(
+                f"Earthquake data for {month_name} {self.year} is not available "
+                "on the PHIVOLCS website."
+            )
         parsed = pd.to_datetime(df[datetime_col], format="mixed")
         idx = df.columns.get_loc(datetime_col)
         df = df.copy()

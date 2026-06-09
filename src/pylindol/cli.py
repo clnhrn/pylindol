@@ -1,6 +1,9 @@
 import click
 
-from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
+from pylindol.earthquake_info_scraper import (
+    DataNotAvailableError,
+    PhivolcsEarthquakeInfoScraper,
+)
 
 
 @click.command()
@@ -32,4 +35,7 @@ def main(month, year, output_path):
     scraper = PhivolcsEarthquakeInfoScraper(
         month=month, year=year, output_path=output_path
     )
-    scraper.run()
+    try:
+        scraper.run()
+    except DataNotAvailableError as e:
+        raise click.ClickException(str(e))
