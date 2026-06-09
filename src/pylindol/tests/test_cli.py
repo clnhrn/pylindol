@@ -81,3 +81,35 @@ class TestCLI:
         assert result.exit_code != 0
         # Check that exception was raised (it won't be in output with Click)
         assert isinstance(result.exception, ValueError)
+
+    @responses.activate
+    def test_cli_shows_friendly_error_when_data_unavailable(self, tmp_path):
+        """Unavailable months show a clean message instead of a traceback."""
+        # No <th>, so pandas assigns integer columns: the unavailable-month case.
+        mock_html = """
+        <html>
+            <body>
+                <table><tr><td>Table 1</td></tr></table>
+                <table><tr><td>Table 2</td></tr></table>
+                <table>
+                    <tr><td>Date - Time  (Philippine Time)</td><td>Magnitude</td></tr>
+                </table>
+            </body>
+        </html>
+        """
+
+        url = (
+            "https://earthquake.phivolcs.dost.gov.ph/"
+            "EQLatest-Monthly/2017/2017_January.html"
+        )
+        responses.add(responses.GET, url, body=mock_html, status=200)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            main, ["--month", "1", "--year", "2017", "--output-path", str(tmp_path)]
+        )
+
+        assert result.exit_code != 0
+        assert "not available" in result.output
+        # A friendly Click error, not an unhandled traceback.
+        assert result.exc_info is None or result.exception.__class__.__name__ != "AttributeError"
