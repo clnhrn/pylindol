@@ -26,6 +26,9 @@ jobs:
       with:
         version: "latest"
 
+    - name: Fetch all tags
+      run: git fetch --tags --force
+
     - name: Configure git
       run: |
         git config user.name "github-actions[bot]"
