@@ -31,8 +31,8 @@ class TestCLI:
                 <table><tr><td>Table 1</td></tr></table>
                 <table><tr><td>Table 2</td></tr></table>
                 <table>
-                    <tr><th>Date</th><th>Magnitude</th></tr>
-                    <tr><td>2025-08-01</td><td>5.0</td></tr>
+                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
+                    <tr><td>2025-08-01 09:15:00</td><td>5.0</td></tr>
                 </table>
             </body>
         </html>
