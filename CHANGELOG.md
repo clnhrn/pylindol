@@ -1,3 +1,9 @@
+## 0.5.0 (2026-06-09)
+
+### Feat
+
+- create a GitHub Release on publish
+
 ## 0.4.1 (2026-06-09)
 
 ### Fix
