@@ -69,7 +69,7 @@ class CertificateHandler:
 
         self.custom_certificates.append(cert_path)
         self._combined_bundle_path = None  # invalidate the cached bundle
-        logger.info(f"Added certificate: {cert_path}")
+        logger.debug(f"Added certificate: {cert_path}")
         return True
 
     def _validate_certificate_content(self, cert_path: Path) -> bool:
@@ -121,42 +121,37 @@ class CertificateHandler:
             OSError: If there's an error reading or writing certificate files
         """
         if not self.custom_certificates:
-            logger.info("No custom certificates to append, returning certifi bundle")
+            logger.debug("No custom certificates to append, returning certifi bundle")
             return Path(self.certifi_bundle_path)
 
         output_path = (
             Path(output_path) if output_path is not None else self.bundle_cache_path
         )
 
-        try:
-            # Read the original certifi bundle
-            with open(self.certifi_bundle_path, "r", encoding="utf-8") as f:
-                combined_content = f.read()
+        # Read the original certifi bundle
+        with open(self.certifi_bundle_path, "r", encoding="utf-8") as f:
+            combined_content = f.read()
 
-            # Ensure there's a newline at the end
-            if not combined_content.endswith("\n"):
+        # Ensure there's a newline at the end
+        if not combined_content.endswith("\n"):
+            combined_content += "\n"
+
+        # Append custom certificates
+        for cert_path in self.custom_certificates:
+            logger.debug(f"Appending certificate: {cert_path}")
+            with open(cert_path, "r", encoding="utf-8") as f:
+                cert_content = f.read()
+
+            # Ensure proper formatting
+            if not cert_content.startswith("\n"):
+                combined_content += "\n"
+            combined_content += cert_content
+            if not cert_content.endswith("\n"):
                 combined_content += "\n"
 
-            # Append custom certificates
-            for cert_path in self.custom_certificates:
-                logger.info(f"Appending certificate: {cert_path}")
-                with open(cert_path, "r", encoding="utf-8") as f:
-                    cert_content = f.read()
-
-                # Ensure proper formatting
-                if not cert_content.startswith("\n"):
-                    combined_content += "\n"
-                combined_content += cert_content
-                if not cert_content.endswith("\n"):
-                    combined_content += "\n"
-
-            self._write_atomic(output_path, combined_content)
-            logger.info(f"Created combined certificate bundle: {output_path}")
-            return output_path
-
-        except (OSError, UnicodeDecodeError) as e:
-            logger.error(f"Error creating combined certificate bundle: {e}")
-            raise
+        self._write_atomic(output_path, combined_content)
+        logger.debug(f"Created combined certificate bundle: {output_path}")
+        return output_path
 
     @staticmethod
     def _write_atomic(output_path: Path, content: str) -> None:

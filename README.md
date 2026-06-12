@@ -69,6 +69,16 @@ pylindol --output-path my_data
 pylindol --month 9 --year 2025 --output-path archive
 ```
 
+#### Control log verbosity
+
+The CLI logs at INFO by default. Use `-v`/`--verbose` for debug detail or
+`-q`/`--quiet` to show only warnings and errors.
+
+```bash
+pylindol --month 9 --year 2025 -v   # debug
+pylindol --month 9 --year 2025 -q   # warnings and errors only
+```
+
 #### Get help
 
 ```bash
@@ -135,7 +145,7 @@ df = scraper.run()  # Only returns DataFrame, no CSV file
 - ✅ Optional CSV export (can be disabled)
 - ✅ Automatic CA certificate handling for SSL connections
 - ✅ Input validation (month range, year validation, and future date prevention)
-- ✅ Structured logging with loguru
+- ✅ Structured logging with loguru (silent when used as a library; enable with `logger.enable("pylindol")`)
 
 ## Output
 

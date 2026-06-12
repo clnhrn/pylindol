@@ -79,18 +79,19 @@ class PhivolcsEarthquakeInfoScraper:
 
             # Check if the CA certificate file exists and add it
             if CA_CERTIFICATE_PATH.exists():
-                logger.info(f"Adding CA certificate: {CA_CERTIFICATE_PATH}")
+                logger.debug(f"Adding CA certificate: {CA_CERTIFICATE_PATH}")
                 self.certificate_handler.add_certificate(CA_CERTIFICATE_PATH)
-                logger.info("CA certificate successfully added to certifi bundle")
+                logger.debug("CA certificate successfully added to certifi bundle")
             else:
-                logger.warning(f"CA certificate file not found: {CA_CERTIFICATE_PATH}")
-                logger.info(
-                    "Using default certifi bundle without custom CA certificates"
+                logger.warning(
+                    f"CA certificate file not found: {CA_CERTIFICATE_PATH}. "
+                    "Using the default certifi bundle."
                 )
 
         except Exception as e:
-            logger.error(f"Error setting up certificates: {e}")
-            logger.warning("Continuing with default certifi bundle")
+            logger.warning(
+                f"Error setting up certificates, using the default certifi bundle: {e}"
+            )
 
     def _validate_month_input(self, month: int) -> int:
         """Validate the month input.
@@ -144,23 +145,19 @@ class PhivolcsEarthquakeInfoScraper:
         Raises:
             requests.HTTPError: If the response status is 4xx or 5xx.
         """
-        try:
-            with requests.Session() as session:
-                if (
-                    self.certificate_handler
-                    and self.certificate_handler.custom_certificates
-                ):
-                    bundle_path = self.certificate_handler.get_bundle_path()
-                    logger.info(f"Using combined certificate bundle: {bundle_path}")
-                    response = session.get(url, verify=str(bundle_path))
-                else:
-                    logger.info("Using default certifi bundle")
-                    response = session.get(url)
-                response.raise_for_status()
-                return response.content
-        except Exception as e:
-            logger.error(f"Error fetching page {url}: {e}")
-            raise
+        with requests.Session() as session:
+            if (
+                self.certificate_handler
+                and self.certificate_handler.custom_certificates
+            ):
+                bundle_path = self.certificate_handler.get_bundle_path()
+                logger.debug(f"Using combined certificate bundle: {bundle_path}")
+                response = session.get(url, verify=str(bundle_path))
+            else:
+                logger.debug("Using default certifi bundle")
+                response = session.get(url)
+            response.raise_for_status()
+            return response.content
 
     def extract_target_table(self, page: bytes) -> pd.DataFrame:
         """
