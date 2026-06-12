@@ -1,3 +1,11 @@
+## 0.5.2 (2026-06-12)
+
+### Refactor
+
+- restore timestamp in CLI log format
+- make logging silent-by-default with CLI verbosity control
+- consolidate scraper, trim cert handler, cache CA bundle
+
 ## 0.5.1 (2026-06-09)
 
 ### Fix
