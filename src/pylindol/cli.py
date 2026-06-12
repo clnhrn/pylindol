@@ -17,9 +17,13 @@ def _configure_logging(verbose: bool, quiet: bool) -> None:
         quiet: Show only warnings and errors.
     """
     level = "DEBUG" if verbose else "WARNING" if quiet else "INFO"
+    log_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+        "<level>{level: <8}</level> | {message}"
+    )
     logger.enable("pylindol")
     logger.remove()
-    logger.add(sys.stderr, level=level, format="<level>{level: <8}</level> {message}")
+    logger.add(sys.stderr, level=level, format=log_format)
 
 
 @click.command()
