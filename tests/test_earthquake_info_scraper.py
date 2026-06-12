@@ -100,8 +100,8 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
     """Test scraping functionality with mocked requests."""
 
     @responses.activate
-    def test_extract_main_page_success(self):
-        """Test successful extraction of main page."""
+    def test_fetch_page_main_url_success(self):
+        """Test successful fetch of the main page URL."""
         mock_html = "<html><body>Test content</body></html>"
         responses.add(
             responses.GET,
@@ -111,12 +111,12 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
         )
 
         scraper = PhivolcsEarthquakeInfoScraper()
-        content = scraper.extract_main_page()
+        content = scraper._fetch_page(scraper.base_url)
         assert content == mock_html.encode()
 
     @responses.activate
-    def test_extract_month_page_success(self):
-        """Test successful extraction of monthly page."""
+    def test_fetch_page_month_url_success(self):
+        """Test successful fetch of a monthly page URL."""
         mock_html = "<html><body>Monthly data</body></html>"
         url = (
             "https://earthquake.phivolcs.dost.gov.ph/"
@@ -130,7 +130,7 @@ class TestPhivolcsEarthquakeInfoScraperScraping:
         )
 
         scraper = PhivolcsEarthquakeInfoScraper(month=8, year=2025)
-        content = scraper.extract_month_page()
+        content = scraper._fetch_page(scraper.month_url)
         assert content == mock_html.encode()
 
     def test_extract_target_table(self):
