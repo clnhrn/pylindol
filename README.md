@@ -3,7 +3,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![PyPI version](https://img.shields.io/pypi/v/pylindol)
 
-pylindol is a lightweight and easy-to-use library designed to scrape or pull the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API to get up-to-date information for your applications, scripts, or research projects.
+pylindol is a lightweight library for scraping the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API and command line tool to pull up-to-date earthquake information for your applications, scripts, or research.
 
 ## Requirements
 
@@ -11,170 +11,144 @@ pylindol is a lightweight and easy-to-use library designed to scrape or pull the
 
 ## Installation
 
-Install pylindol directly from PyPI:
+Install from PyPI:
 
 ```bash
 pip install pylindol
 ```
 
-### Using a virtual environment (recommended)
-
-```bash
-# Create a virtual environment
-python3 -m venv .venv
-
-# Activate the virtual environment
-source .venv/bin/activate  # On macOS/Linux
-# .venv\Scripts\activate   # On Windows
-
-# Install pylindol
-pip install pylindol
-```
-
-### Using uv
-
-If you prefer using `uv` for faster package management:
+Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv add pylindol
 ```
 
-## Usage
+## Command line usage
 
-### Command Line Interface (CLI)
+Installing the package adds the `pylindol` command.
 
-The package provides the `pylindol` command after installation.
-
-#### Basic usage (scrape current month)
+Scrape the current month:
 
 ```bash
 pylindol
 ```
 
-#### Scrape a specific month and year
+Scrape a specific month and year:
 
 ```bash
 pylindol --month 8 --year 2025
 ```
 
-#### Specify custom output directory
+Save to a custom output directory (default is `data`):
 
 ```bash
-pylindol --output-path my_data
+pylindol --month 8 --year 2025 --output-path archive
 ```
 
-#### Combine options
+Control log verbosity. The CLI logs at INFO by default; use `-v`/`--verbose`
+for debug detail or `-q`/`--quiet` to show only warnings and errors:
 
 ```bash
-pylindol --month 9 --year 2025 --output-path archive
+pylindol --month 8 --year 2025 -v   # debug
+pylindol --month 8 --year 2025 -q   # warnings and errors only
 ```
 
-#### Control log verbosity
-
-The CLI logs at INFO by default. Use `-v`/`--verbose` for debug detail or
-`-q`/`--quiet` to show only warnings and errors.
-
-```bash
-pylindol --month 9 --year 2025 -v   # debug
-pylindol --month 9 --year 2025 -q   # warnings and errors only
-```
-
-#### Get help
+See all options:
 
 ```bash
 pylindol --help
 ```
 
-### Python Library
+The CLI always writes a CSV file.
 
-You can also use the scraper as a Python library in your code.
-
-#### Import the class
+## Library usage
 
 ```python
 from pylindol import PhivolcsEarthquakeInfoScraper
-```
 
-#### Scrape current month
-
-```python
+# Scrape the current month (returns a pandas DataFrame).
 scraper = PhivolcsEarthquakeInfoScraper()
-df = scraper.run()  # Returns a pandas DataFrame
-print(df.head())  # Display first few rows
+df = scraper.run()
+print(df.head())
 ```
 
-#### Scrape specific month and year
+Scrape a specific month and year:
 
 ```python
 scraper = PhivolcsEarthquakeInfoScraper(month=8, year=2025)
-df = scraper.run()  # Returns a pandas DataFrame
+df = scraper.run()
 ```
 
-#### Specify custom output path
+By default `run()` also writes a CSV file. Set `export_to_csv=False` to skip
+the file and only return the DataFrame:
 
 ```python
 scraper = PhivolcsEarthquakeInfoScraper(
-    month=9, 
-    year=2025, 
-    output_path="custom/directory"
+    month=8,
+    year=2025,
+    output_path="archive",   # CSV output directory
+    export_to_csv=False,     # return the DataFrame only
 )
-df = scraper.run()  # Returns a pandas DataFrame
+df = scraper.run()
 ```
 
-#### Control CSV export
+### Constructor options
+
+| Argument        | Default  | Description                               |
+| --------------- | -------- | ----------------------------------------- |
+| `month`         | `None`   | Month to scrape (1-12). Requires `year`.  |
+| `year`          | `None`   | Year to scrape. Requires `month`.         |
+| `output_path`   | `"data"` | Directory for the CSV output.             |
+| `export_to_csv` | `True`   | Whether to write a CSV file.              |
+
+If neither `month` nor `year` is given, the scraper uses the current month.
+Both must be provided together.
+
+### Logging
+
+pylindol uses [loguru](https://loguru.readthedocs.io) and stays silent when
+imported as a library. Enable its logs in your application with:
 
 ```python
-# Export to CSV (default behavior)
-scraper = PhivolcsEarthquakeInfoScraper(month=8, year=2025)
-df = scraper.run()  # Also saves to CSV file
+from loguru import logger
 
-# Skip CSV export and only return DataFrame
-scraper = PhivolcsEarthquakeInfoScraper(
-    month=8, 
-    year=2025, 
-    export_to_csv=False
-)
-df = scraper.run()  # Only returns DataFrame, no CSV file
+logger.enable("pylindol")
 ```
 
-## Features
+### Errors
 
-- ✅ Scrape current month's earthquake data
-- ✅ Scrape historical data by month and year
-- ✅ Returns pandas DataFrame for easy data manipulation
-- ✅ Optional CSV export (can be disabled)
-- ✅ Automatic CA certificate handling for SSL connections
-- ✅ Input validation (month range, year validation, and future date prevention)
-- ✅ Structured logging with loguru (silent when used as a library; enable with `logger.enable("pylindol")`)
+- `ValueError` if only one of `month`/`year` is provided, an input fails
+  validation (month outside 1-12, year before 1900 or in the future), or the
+  requested month is in the future.
+- `DataNotAvailableError` if PHIVOLCS has no data for the requested month.
 
 ## Output
 
-The scraper saves earthquake data as CSV files with the naming convention:
+CSV files are named:
 
 ```
 phivolcs_earthquake_data_{month}_{year}.csv
 ```
 
-**Default location:** `data/` directory (created automatically if it doesn't exist)
+They are written to the output directory (default `data/`, created
+automatically). For example: `data/phivolcs_earthquake_data_10_2025.csv`.
 
-**Example:** `data/phivolcs_earthquake_data_10_2025.csv`
-
-**Note:** You can disable CSV export by setting `export_to_csv=False` in the constructor. Note that the CLI will always export data to a CSV file.
-
-The CSV files contain earthquake information including date, time, magnitude, location, and depth.
+Each file contains earthquake details including date, time, magnitude,
+location, and depth.
 
 ## Development
 
-If you want to contribute to pylindol or run it from source:
+Run from source:
 
 ```bash
-# Clone the repository
 git clone git@github.com:clnhrn/pylindol.git
 cd pylindol
-
-# Install in development mode
-pip install -e .
-
-# Or using uv
 uv sync
+
+# Run the tests
+uv run pytest
 ```
+
+## License
+
+Released under the [MIT License](LICENSE).
