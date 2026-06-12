@@ -1,9 +1,14 @@
 """Tests for the CLI interface."""
 
+from unittest.mock import patch
+
+import pytest
 import responses
 from click.testing import CliRunner
+from loguru import logger
 
-from pylindol.cli import main
+from pylindol.cli import _configure_logging, main
+from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
 
 
 class TestCLI:
@@ -113,3 +118,39 @@ class TestCLI:
         assert "not available" in result.output
         # A friendly Click error, not an unhandled traceback.
         assert result.exc_info is None or result.exception.__class__.__name__ != "AttributeError"
+
+
+class TestLoggingBehavior:
+    """Test logging configuration and the library's silent-by-default behavior."""
+
+    @pytest.mark.parametrize(
+        "verbose, quiet, expected_level",
+        [
+            (False, False, "INFO"),
+            (True, False, "DEBUG"),
+            (False, True, "WARNING"),
+            (True, True, "DEBUG"),  # verbose wins over quiet
+        ],
+    )
+    def test_configure_logging_sets_expected_level(self, verbose, quiet, expected_level):
+        """The verbosity flags map to the right loguru level and enable pylindol."""
+        with patch("pylindol.cli.logger") as mock_logger:
+            _configure_logging(verbose=verbose, quiet=quiet)
+
+        mock_logger.enable.assert_called_once_with("pylindol")
+        mock_logger.remove.assert_called_once()
+        _, kwargs = mock_logger.add.call_args
+        assert kwargs["level"] == expected_level
+
+    def test_library_logs_suppressed_when_disabled(self):
+        """With pylindol disabled (the default), its logs reach no caller sink."""
+        logger.disable("pylindol")
+        messages = []
+        sink_id = logger.add(messages.append, level="DEBUG")
+        try:
+            # Construction logs at DEBUG inside the pylindol package.
+            PhivolcsEarthquakeInfoScraper(month=8, year=2025, export_to_csv=False)
+        finally:
+            logger.remove(sink_id)
+
+        assert messages == []

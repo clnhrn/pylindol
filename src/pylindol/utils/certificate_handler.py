@@ -6,6 +6,7 @@ certifi certificate bundle, which is useful for handling SSL connections
 to servers with custom or additional certificates.
 """
 
+import os
 import certifi
 import ssl
 import tempfile
@@ -13,22 +14,32 @@ from pathlib import Path
 from typing import List, Optional, Union
 from loguru import logger
 
+# Combined bundles are written here and reused across runs, so repeated
+# invocations do not litter the temp directory with one bundle per process.
+DEFAULT_BUNDLE_CACHE_PATH = Path(tempfile.gettempdir()) / "pylindol_ca_bundle.pem"
+
 
 class CertificateHandler:
-    """
-    A class to handle custom CA certificates by appending them to certifi's bundle.
+    """Handle custom CA certificates by appending them to certifi's bundle.
 
     This class provides methods to:
     - Append custom CA certificates to the certifi bundle
     - Verify certificate paths and contents
-    - Get the combined certificate bundle path
-    - Validate SSL contexts
+    - Get the combined certificate bundle path (built once and cached)
     """
 
-    def __init__(self):
-        """Initialize the CertificateHandler."""
+    def __init__(self, bundle_cache_path: Optional[Union[str, Path]] = None):
+        """Initialize the CertificateHandler.
+
+        Args:
+            bundle_cache_path: Where to cache the combined bundle. Defaults to a
+                fixed path in the system temp directory so the bundle is reused
+                across runs. Mainly an injection point for tests.
+        """
         self.certifi_bundle_path = certifi.where()
         self.custom_certificates: List[Path] = []
+        self.bundle_cache_path = Path(bundle_cache_path or DEFAULT_BUNDLE_CACHE_PATH)
+        self._combined_bundle_path: Optional[Path] = None
 
     def add_certificate(self, certificate_path: Union[str, Path]) -> bool:
         """
@@ -57,7 +68,8 @@ class CertificateHandler:
             raise ValueError(f"Invalid certificate format: {cert_path}")
 
         self.custom_certificates.append(cert_path)
-        logger.info(f"Added certificate: {cert_path}")
+        self._combined_bundle_path = None  # invalidate the cached bundle
+        logger.debug(f"Added certificate: {cert_path}")
         return True
 
     def _validate_certificate_content(self, cert_path: Path) -> bool:
@@ -95,9 +107,12 @@ class CertificateHandler:
         """
         Create a combined certificate bundle by appending custom certificates.
 
+        The bundle is written atomically (temp file plus rename) so a concurrent
+        reader never sees a half-written file at the shared cache path.
+
         Args:
-            output_path: Optional path to save the combined bundle.
-                        If None, creates a temporary file.
+            output_path: Optional path to save the combined bundle. Defaults to
+                `bundle_cache_path`.
 
         Returns:
             Path: Path to the combined certificate bundle
@@ -106,159 +121,83 @@ class CertificateHandler:
             OSError: If there's an error reading or writing certificate files
         """
         if not self.custom_certificates:
-            logger.info("No custom certificates to append, returning certifi bundle")
+            logger.debug("No custom certificates to append, returning certifi bundle")
             return Path(self.certifi_bundle_path)
 
-        if output_path is None:
-            temp_file = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".pem", delete=False
-            )
-            output_path = Path(temp_file.name)
-            temp_file.close()
-        else:
-            output_path = Path(output_path)
+        output_path = (
+            Path(output_path) if output_path is not None else self.bundle_cache_path
+        )
 
-        try:
-            # Read the original certifi bundle
-            with open(self.certifi_bundle_path, "r", encoding="utf-8") as f:
-                combined_content = f.read()
+        # Read the original certifi bundle
+        with open(self.certifi_bundle_path, "r", encoding="utf-8") as f:
+            combined_content = f.read()
 
-            # Ensure there's a newline at the end
-            if not combined_content.endswith("\n"):
+        # Ensure there's a newline at the end
+        if not combined_content.endswith("\n"):
+            combined_content += "\n"
+
+        # Append custom certificates
+        for cert_path in self.custom_certificates:
+            logger.debug(f"Appending certificate: {cert_path}")
+            with open(cert_path, "r", encoding="utf-8") as f:
+                cert_content = f.read()
+
+            # Ensure proper formatting
+            if not cert_content.startswith("\n"):
+                combined_content += "\n"
+            combined_content += cert_content
+            if not cert_content.endswith("\n"):
                 combined_content += "\n"
 
-            # Append custom certificates
-            for cert_path in self.custom_certificates:
-                logger.info(f"Appending certificate: {cert_path}")
-                with open(cert_path, "r", encoding="utf-8") as f:
-                    cert_content = f.read()
+        self._write_atomic(output_path, combined_content)
+        logger.debug(f"Created combined certificate bundle: {output_path}")
+        return output_path
 
-                # Ensure proper formatting
-                if not cert_content.startswith("\n"):
-                    combined_content += "\n"
-                combined_content += cert_content
-                if not cert_content.endswith("\n"):
-                    combined_content += "\n"
-
-            # Write the combined bundle
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(combined_content)
-
-            logger.info(f"Created combined certificate bundle: {output_path}")
-            return output_path
-
-        except (OSError, UnicodeDecodeError) as e:
-            logger.error(f"Error creating combined certificate bundle: {e}")
+    @staticmethod
+    def _write_atomic(output_path: Path, content: str) -> None:
+        """Write `content` to `output_path` atomically via a temp file and rename."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(suffix=".pem", dir=output_path.parent)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            os.replace(tmp_name, output_path)
+        except OSError:
+            Path(tmp_name).unlink(missing_ok=True)
             raise
 
-    def get_bundle_path(self, use_combined: bool = True) -> Path:
-        """
-        Get the certificate bundle path.
+    def _bundle_is_fresh(self, bundle_path: Path) -> bool:
+        """Whether a cached bundle exists and is newer than all of its sources.
 
         Args:
-            use_combined: If True and custom certificates exist, return combined bundle.
-                         If False, return only certifi bundle.
+            bundle_path: Path to the cached combined bundle.
 
         Returns:
-            Path: Path to the certificate bundle
+            True if the bundle is at least as new as the certifi bundle and every
+            custom certificate, meaning it can be reused without rebuilding.
         """
-        if use_combined and self.custom_certificates:
-            return self.create_combined_bundle()
-        return Path(self.certifi_bundle_path)
-
-    def create_ssl_context(self, use_combined: bool = True) -> ssl.SSLContext:
-        """
-        Create an SSL context using the certificate bundle.
-
-        Args:
-            use_combined: If True and custom certificates exist, use combined bundle.
-                         If False, use only certifi bundle.
-
-        Returns:
-            ssl.SSLContext: Configured SSL context
-        """
-        bundle_path = self.get_bundle_path(use_combined)
-
-        context = ssl.create_default_context()
-        context.load_verify_locations(str(bundle_path))
-
-        logger.info(f"Created SSL context with bundle: {bundle_path}")
-        return context
-
-    def verify_connection(
-        self, hostname: str, port: int = 443, use_combined: bool = True
-    ) -> bool:
-        """
-        Verify SSL connection to a hostname using the certificate bundle.
-
-        Args:
-            hostname: Target hostname
-            port: Target port (default: 443)
-            use_combined: If True and custom certificates exist, use combined bundle.
-                         If False, use only certifi bundle.
-
-        Returns:
-            bool: True if connection is successful, False otherwise
-        """
-        try:
-            context = self.create_ssl_context(use_combined)
-
-            with ssl.create_connection((hostname, port)) as sock:
-                with context.wrap_socket(sock, server_hostname=hostname):
-                    logger.info(f"SSL connection verified to {hostname}:{port}")
-                    return True
-
-        except (ssl.SSLError, OSError) as e:
-            logger.error(f"SSL connection failed to {hostname}:{port}: {e}")
+        if not bundle_path.exists():
             return False
+        bundle_mtime = bundle_path.stat().st_mtime
+        sources = [Path(self.certifi_bundle_path), *self.custom_certificates]
+        return all(bundle_mtime >= source.stat().st_mtime for source in sources)
 
-    def clear_custom_certificates(self) -> None:
-        """Clear all custom certificates from the handler."""
-        self.custom_certificates.clear()
-        logger.info("Cleared all custom certificates")
+    def get_bundle_path(self) -> Path:
+        """Get the certificate bundle path.
 
-    def list_certificates(self) -> List[Path]:
-        """
-        Get a list of currently added custom certificates.
+        Reuses the cached combined bundle when it is still fresh, rebuilding it
+        only when certifi or a custom certificate has changed. Returns the plain
+        certifi bundle when no custom certificates have been added.
 
         Returns:
-            List[Path]: List of custom certificate paths
+            Path: Path to the certificate bundle.
         """
-        return self.custom_certificates.copy()
-
-    def __len__(self) -> int:
-        """Return the number of custom certificates."""
-        return len(self.custom_certificates)
-
-    def __repr__(self) -> str:
-        """Return a string representation of the CertificateHandler."""
-        return f"CertificateHandler(certificates={len(self.custom_certificates)})"
-
-
-# Convenience function for common usage
-def create_certificate_handler_with_ca(
-    ca_certificate_path: Union[str, Path],
-) -> CertificateHandler:
-    """
-    Create a CertificateHandler instance with a specific CA certificate.
-
-    Args:
-        ca_certificate_path: Path to the CA certificate file
-
-    Returns:
-        CertificateHandler: Configured handler with the CA certificate
-
-    Raises:
-        FileNotFoundError: If the certificate file doesn't exist
-        ValueError: If the certificate file is invalid
-    """
-    handler = CertificateHandler()
-    handler.add_certificate(ca_certificate_path)
-    return handler
-
-
-if __name__ == "__main__":
-    from pylindol.config.paths import CA_CERTIFICATE_PATH
-
-    handler = create_certificate_handler_with_ca(CA_CERTIFICATE_PATH)
-    print(handler.get_bundle_path())
+        if not self.custom_certificates:
+            return Path(self.certifi_bundle_path)
+        if self._combined_bundle_path is None:
+            self._combined_bundle_path = (
+                self.bundle_cache_path
+                if self._bundle_is_fresh(self.bundle_cache_path)
+                else self.create_combined_bundle()
+            )
+        return self._combined_bundle_path

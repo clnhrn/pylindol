@@ -17,29 +17,30 @@ class DataNotAvailableError(Exception):
 
 
 class PhivolcsEarthquakeInfoScraper:
-    """
-    This class is used to scrape the latest earthquake information from the
-    PHIVOLCS website.
+    """Scrape earthquake information from the PHIVOLCS website.
 
     You can either scrape the latest earthquake information or a specific month
-    and year. By default, it will scrape the latest earthquake information.
+    and year. By default, it scrapes the current month from the main page.
     """
 
     def __init__(
         self,
         month: Optional[int] = None,
         year: Optional[int] = None,
-        output_path: Optional[str] = "data",
-        export_to_csv: Optional[bool] = True,
+        output_path: str = "data",
+        export_to_csv: bool = True,
     ):
-        """
-        Initialize the scraper.
+        """Initialize the scraper.
 
         Args:
-            month: The month to scrape.
-            year: The year to scrape.
-            output_path: The path to export the dataframe.
+            month: The month to scrape. Requires `year` to also be provided.
+            year: The year to scrape. Requires `month` to also be provided.
+            output_path: Directory to export the CSV to.
             export_to_csv: Whether to export the dataframe to a CSV file.
+
+        Raises:
+            ValueError: If only one of `month`/`year` is provided, or if either
+                fails validation.
         """
 
         self.base_url = "https://earthquake.phivolcs.dost.gov.ph"
@@ -68,40 +69,59 @@ class PhivolcsEarthquakeInfoScraper:
         self._setup_certificates()
 
     def _setup_certificates(self):
-        """
-        Setup certificate handler and append CA certificates to certifi bundle.
+        """Set up the certificate handler and append the CA cert to the certifi bundle.
+
+        Falls back to the default certifi bundle if the bundled CA certificate
+        is missing or cannot be loaded; failures are logged, not raised.
         """
         try:
             self.certificate_handler = CertificateHandler()
 
             # Check if the CA certificate file exists and add it
             if CA_CERTIFICATE_PATH.exists():
-                logger.info(f"Adding CA certificate: {CA_CERTIFICATE_PATH}")
+                logger.debug(f"Adding CA certificate: {CA_CERTIFICATE_PATH}")
                 self.certificate_handler.add_certificate(CA_CERTIFICATE_PATH)
-                logger.info("CA certificate successfully added to certifi bundle")
+                logger.debug("CA certificate successfully added to certifi bundle")
             else:
-                logger.warning(f"CA certificate file not found: {CA_CERTIFICATE_PATH}")
-                logger.info(
-                    "Using default certifi bundle without custom CA certificates"
+                logger.warning(
+                    f"CA certificate file not found: {CA_CERTIFICATE_PATH}. "
+                    "Using the default certifi bundle."
                 )
 
         except Exception as e:
-            logger.error(f"Error setting up certificates: {e}")
-            logger.warning("Continuing with default certifi bundle")
+            logger.warning(
+                f"Error setting up certificates, using the default certifi bundle: {e}"
+            )
 
     def _validate_month_input(self, month: int) -> int:
+        """Validate the month input.
+
+        Args:
+            month: The month to validate.
+
+        Returns:
+            The validated month.
+
+        Raises:
+            ValueError: If the month is outside 1-12.
         """
-        Validate the month input.
-        """
-        if month is not None and month < 1 or month > 12:
+        if month < 1 or month > 12:
             raise ValueError((f"Month must be between 1 and 12. You provided {month}."))
         return month
 
     def _validate_year_input(self, year: int) -> int:
+        """Validate the year input.
+
+        Args:
+            year: The year to validate.
+
+        Returns:
+            The validated year.
+
+        Raises:
+            ValueError: If the year is before 1900 or after the current year.
         """
-        Validate the year input.
-        """
-        if year is not None and (year < 1900 or year > datetime.now().year):
+        if year < 1900 or year > datetime.now().year:
             raise ValueError(
                 (
                     "Year must be greater than 1900 and less than the current year "
@@ -110,57 +130,34 @@ class PhivolcsEarthquakeInfoScraper:
             )
         return year
 
-    def extract_main_page(self) -> bytes:
-        """
-        Scrape the main earthquake data page of the PHIVOLCS website.
+    def _fetch_page(self, url: str) -> bytes:
+        """Fetch a page from the PHIVOLCS website.
+
+        Uses the combined certificate bundle when custom CA certificates are
+        available, otherwise falls back to the default certifi bundle.
+
+        Args:
+            url: The page URL to request.
 
         Returns:
-            bytes: The content of the main page.
-        """
-        try:
-            with requests.Session() as session:
-                # Use certificate handler if available
-                if (
-                    self.certificate_handler
-                    and self.certificate_handler.custom_certificates
-                ):
-                    bundle_path = self.certificate_handler.get_bundle_path()
-                    logger.info(f"Using combined certificate bundle: {bundle_path}")
-                    response = session.get(self.base_url, verify=str(bundle_path))
-                else:
-                    logger.info("Using default certifi bundle")
-                    response = session.get(self.base_url)
-                response.raise_for_status()
-                return response.content
-        except Exception as e:
-            logger.error(f"Error extracting main page: {e}")
-            raise
+            The raw page content.
 
-    def extract_month_page(self) -> bytes:
+        Raises:
+            requests.HTTPError: If the response status is 4xx or 5xx.
         """
-        Scrape the monthly earthquake data page of the PHIVOLCS website.
-
-        Returns:
-            bytes: The content of the monthly page.
-        """
-        try:
-            with requests.Session() as session:
-                # Use certificate handler if available
-                if (
-                    self.certificate_handler
-                    and self.certificate_handler.custom_certificates
-                ):
-                    bundle_path = self.certificate_handler.get_bundle_path()
-                    logger.info(f"Using combined certificate bundle: {bundle_path}")
-                    response = session.get(self.month_url, verify=str(bundle_path))
-                else:
-                    logger.info("Using default certifi bundle")
-                    response = session.get(self.month_url)
-                response.raise_for_status()
-                return response.content
-        except Exception as e:
-            logger.error(f"Error extracting month page: {e}")
-            raise
+        with requests.Session() as session:
+            if (
+                self.certificate_handler
+                and self.certificate_handler.custom_certificates
+            ):
+                bundle_path = self.certificate_handler.get_bundle_path()
+                logger.debug(f"Using combined certificate bundle: {bundle_path}")
+                response = session.get(url, verify=str(bundle_path))
+            else:
+                logger.debug("Using default certifi bundle")
+                response = session.get(url)
+            response.raise_for_status()
+            return response.content
 
     def extract_target_table(self, page: bytes) -> pd.DataFrame:
         """
@@ -206,12 +203,10 @@ class PhivolcsEarthquakeInfoScraper:
         return df
 
     def _export_to_csv(self, df: pd.DataFrame):
-        """
-        Export the dataframe to a CSV file.
+        """Export the dataframe to a CSV file under `output_path`.
 
         Args:
             df: The dataframe to export.
-            output_path: The path to export the dataframe.
         """
         Path(self.output_path).mkdir(exist_ok=True, parents=True)
         file_name = (
@@ -221,43 +216,18 @@ class PhivolcsEarthquakeInfoScraper:
         df.to_csv(file_name, index=False)
         logger.info(f"Exported data to {file_name}")
 
-    def _run_main_scrape(self) -> pd.DataFrame:
-        """
-        Run the scraper for the main page.
-
-        Returns:
-            pd.DataFrame: The dataframe containing the earthquake data
-            from the main page.
-        """
-        page = self.extract_main_page()
-        table = self.extract_target_table(page)
-        table = self._add_datetime_columns(table)
-        if self.export_to_csv:
-            self._export_to_csv(table)
-        return table
-
-    def _run_month_scrape(self) -> pd.DataFrame:
-        """
-        Run the scraper for the month page.
-
-        Returns:
-            pd.DataFrame: The dataframe containing the earthquake data
-            from the month page.
-        """
-        page = self.extract_month_page()
-        table = self.extract_target_table(page)
-        table = self._add_datetime_columns(table)
-        if self.export_to_csv:
-            self._export_to_csv(table)
-        return table
-
     def run(self) -> pd.DataFrame:
-        """
-        Run the scraper.
+        """Run the scraper.
+
+        The current month is read from the site's main page; any past month is
+        read from its monthly archive page.
 
         Returns:
-            pd.DataFrame: The dataframe containing the earthquake data
-            from the main page or the month page.
+            The dataframe containing the earthquake data.
+
+        Raises:
+            ValueError: If the requested month-year is in the future.
+            DataNotAvailableError: If PHIVOLCS has no data for the month.
         """
         target_date = date(self.year, self.month, 1)
         current_date = date.today().replace(day=1)
@@ -269,11 +239,17 @@ class PhivolcsEarthquakeInfoScraper:
                     "or in the past."
                 )
             )
-        elif self.month == datetime.now().month and self.year == datetime.now().year:
-            logger.info(
-                f"Scraping main (current month) page: {self.month} of {self.year}"
-            )
-            return self._run_main_scrape()
+
+        if target_date == current_date:
+            logger.info(f"Scraping current month page: {self.month} of {self.year}")
+            url = self.base_url
         else:
             logger.info(f"Scraping month {self.month} of year {self.year}")
-            return self._run_month_scrape()
+            url = self.month_url
+
+        table = self._add_datetime_columns(
+            self.extract_target_table(self._fetch_page(url))
+        )
+        if self.export_to_csv:
+            self._export_to_csv(table)
+        return table
