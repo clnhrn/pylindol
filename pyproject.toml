@@ -3,36 +3,68 @@ name = "pylindol"
 version = "0.5.2"
 description = "A tool to download earthquake report information from the Philippine Institute of Volcanology and Seismology (PHIVOLCS) website."
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "clnhrn", email = "herniacln@gmail.com" }
 ]
+keywords = ["earthquake", "phivolcs", "philippines", "seismology", "scraper", "pandas"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Typing :: Typed",
+]
 requires-python = ">=3.11"
 dependencies = [
-    "beautifulsoup4>=4.14.2",
     "certifi>=2024.0.0",
     "click>=8.1.8",
     "loguru>=0.7.3",
     "lxml>=6.1.0",
     "pandas>=2.3.3,<3",
     "requests>=2.33.0",
+    # Windows has no system timezone database for zoneinfo.
+    "tzdata>=2024.1; sys_platform == 'win32'",
+    "urllib3>=2.0",
 ]
+
+[project.optional-dependencies]
+parquet = ["pyarrow>=17.0"]
+
+[project.urls]
+Homepage = "https://github.com/clnhrn/pylindol"
+Issues = "https://github.com/clnhrn/pylindol/issues"
+Changelog = "https://github.com/clnhrn/pylindol/blob/main/CHANGELOG.md"
 
 [project.scripts]
 pylindol = "pylindol.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.8.0,<0.9"]
+requires = ["uv_build>=0.10.0,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "coverage-badge>=1.1.2",
+    "mypy>=1.13",
+    "pandas-stubs>=2.2,<3",
     "pre-commit>=4.3.0",
+    "pyarrow>=17.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.12.0",
     "responses>=0.25.0",
+    "ruff>=0.16",
+    "types-requests>=2.32",
 ]
 
 [tool.pytest.ini_options]
@@ -40,7 +72,38 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not live'"
+markers = [
+    "live: hits the real PHIVOLCS website (deselect with -m 'not live')",
+]
+
+[tool.coverage.run]
+source = ["pylindol"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DTZ"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["DTZ"]
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.11"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["pylindol.cli"]
+# click decorators make callback signatures untyped.
+disallow_untyped_defs = false
+disallow_untyped_calls = false
 
 [tool.commitizen]
 name = "cz_conventional_commits"

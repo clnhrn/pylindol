@@ -1,113 +1,107 @@
 # pylindol
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![PyPI version](https://img.shields.io/pypi/v/pylindol)
+[![CI](https://github.com/clnhrn/pylindol/actions/workflows/ci.yml/badge.svg)](https://github.com/clnhrn/pylindol/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/pylindol)](https://pypi.org/project/pylindol/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pylindol)](https://pypi.org/project/pylindol/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/clnhrn/pylindol/blob/main/LICENSE)
 
-pylindol is a lightweight library for scraping the latest earthquake data from the [Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph) website. It provides a simple API and command line tool to pull up-to-date earthquake information for your applications, scripts, or research.
+pylindol scrapes earthquake data from the
+[Philippine Institute of Volcanology and Seismology (PHIVOLCS)](https://earthquake.phivolcs.dost.gov.ph)
+website into clean, typed pandas DataFrames. It works as a Python library and
+as a command line tool, and covers every month PHIVOLCS has published since
+January 2017.
 
-## Requirements
+![PHIVOLCS earthquakes in August 2025, plotted by location, depth and magnitude](https://raw.githubusercontent.com/clnhrn/pylindol/main/docs/map.png)
 
-- Python >= 3.11
+<sub>Made with [`examples/plot_map.py`](https://github.com/clnhrn/pylindol/blob/main/examples/plot_map.py).</sub>
 
 ## Installation
 
-Install from PyPI:
-
 ```bash
 pip install pylindol
-```
-
-Or with [uv](https://docs.astral.sh/uv/):
-
-```bash
+# or
 uv add pylindol
 ```
 
+For Parquet output, install the extra: `pip install "pylindol[parquet]"`.
+
+Requires Python 3.11 or later.
+
 ## Command line usage
 
-Installing the package adds the `pylindol` command.
-
-Scrape the current month:
-
 ```bash
-pylindol
+pylindol                                 # current month, saved to data/
+pylindol --month 8 --year 2025           # a past month
+pylindol --start 2025-01 --end 2025-06   # a range of months, in one file
+pylindol --month 8 --year 2025 --format json --output-path archive
+pylindol --month 8 --year 2025 --stdout | head   # print instead of saving
 ```
 
-Scrape a specific month and year:
+| Option | Description |
+| --- | --- |
+| `--month`, `--year` | Month to scrape. Defaults to the current month (Philippine time). |
+| `--start`, `--end` | Range of months to scrape, as `YYYY-MM`. |
+| `--format` | `csv` (default), `json` or `parquet`. |
+| `--output-path` | Directory to save to. Default: `data`. |
+| `--stdout` | Print CSV or JSON instead of saving a file. |
+| `--delay` | Seconds between requests when scraping a range. Default: 1. |
+| `-v` / `-q` | Debug logging / warnings and errors only. |
 
-```bash
-pylindol --month 8 --year 2025
-```
-
-Save to a custom output directory (default is `data`):
-
-```bash
-pylindol --month 8 --year 2025 --output-path archive
-```
-
-Control log verbosity. The CLI logs at INFO by default; use `-v`/`--verbose`
-for debug detail or `-q`/`--quiet` to show only warnings and errors:
-
-```bash
-pylindol --month 8 --year 2025 -v   # debug
-pylindol --month 8 --year 2025 -q   # warnings and errors only
-```
-
-See all options:
-
-```bash
-pylindol --help
-```
-
-The CLI always writes a CSV file.
+Run `pylindol --help` for details.
 
 ## Library usage
 
 ```python
-from pylindol import PhivolcsEarthquakeInfoScraper
+from pylindol import PhivolcsEarthquakeInfoScraper, scrape_months
 
-# Scrape the current month (returns a pandas DataFrame).
-scraper = PhivolcsEarthquakeInfoScraper()
-df = scraper.run()
-print(df.head())
+# One month. Returns a DataFrame and, by default, also writes a CSV.
+df = PhivolcsEarthquakeInfoScraper(month=8, year=2025).run()
+
+# Just the DataFrame, no file.
+df = PhivolcsEarthquakeInfoScraper(month=8, year=2025, export=False).run()
+
+# Write JSON to a custom directory instead.
+PhivolcsEarthquakeInfoScraper(
+    month=8, year=2025, output_path="archive", output_format="json"
+).run()
+
+# Several months in one DataFrame (requests are spaced out by `delay`).
+df = scrape_months((2025, 1), (2025, 6))
+
+strong = df[df["magnitude"] >= 5]
 ```
 
-Scrape a specific month and year:
+### Output
 
-```python
-scraper = PhivolcsEarthquakeInfoScraper(month=8, year=2025)
-df = scraper.run()
-```
+Every layout PHIVOLCS has used is normalized to the same columns:
 
-By default `run()` also writes a CSV file. Set `export_to_csv=False` to skip
-the file and only return the DataFrame:
+| Column | Type | Example |
+| --- | --- | --- |
+| `datetime` | datetime, Asia/Manila timezone | `2025-08-31 23:56:00+08:00` |
+| `date` | string | `2025-08-31` |
+| `time` | string | `23:56:00` |
+| `latitude` | float, °N | `13.35` |
+| `longitude` | float, °E | `120.66` |
+| `depth_km` | float | `8.0` |
+| `magnitude` | float | `1.9` |
+| `location` | string | `012 km S 35° W of Abra De Ilog (Occidental Mindoro)` |
 
-```python
-scraper = PhivolcsEarthquakeInfoScraper(
-    month=8,
-    year=2025,
-    output_path="archive",   # CSV output directory
-    export_to_csv=False,     # return the DataFrame only
-)
-df = scraper.run()
-```
+Files are named `phivolcs_earthquake_data_{month}_{year}.{format}`, or
+`phivolcs_earthquake_data_{m1}_{y1}_to_{m2}_{y2}.{format}` for a range. JSON
+keeps the `+08:00` offset in `datetime`.
 
-### Constructor options
+### Errors
 
-| Argument        | Default  | Description                               |
-| --------------- | -------- | ----------------------------------------- |
-| `month`         | `None`   | Month to scrape (1-12). Requires `year`.  |
-| `year`          | `None`   | Year to scrape. Requires `month`.         |
-| `output_path`   | `"data"` | Directory for the CSV output.             |
-| `export_to_csv` | `True`   | Whether to write a CSV file.              |
-
-If neither `month` nor `year` is given, the scraper uses the current month.
-Both must be provided together.
+- `ValueError`: invalid input, such as a month outside 1-12, a month before
+  January 2017, or a future month, or only one of `month`/`year` given.
+- `TypeError`: `month` or `year` is not an integer.
+- `DataNotAvailableError`: PHIVOLCS has no data for the month.
+- `requests.RequestException`: network errors, after automatic retries.
 
 ### Logging
 
-pylindol uses [loguru](https://loguru.readthedocs.io) and stays silent when
-imported as a library. Enable its logs in your application with:
+pylindol uses [loguru](https://loguru.readthedocs.io) and is silent when
+imported as a library. To see its logs:
 
 ```python
 from loguru import logger
@@ -115,40 +109,45 @@ from loguru import logger
 logger.enable("pylindol")
 ```
 
-### Errors
+## How it works
 
-- `ValueError` if only one of `month`/`year` is provided, an input fails
-  validation (month outside 1-12, year before 1900 or in the future), or the
-  requested month is in the future.
-- `DataNotAvailableError` if PHIVOLCS has no data for the requested month.
-
-## Output
-
-CSV files are named:
-
-```
-phivolcs_earthquake_data_{month}_{year}.csv
-```
-
-They are written to the output directory (default `data/`, created
-automatically). For example: `data/phivolcs_earthquake_data_10_2025.csv`.
-
-Each file contains earthquake details including date, time, magnitude,
-location, and depth.
+- **Finding the data.** PHIVOLCS pages are hand-edited HTML with several
+  layout tables, and the earthquake table's structure has changed over the
+  years: headers in the first row or in a separate table, extra empty
+  columns, mixed encodings and typos such as `11Jun 2017`. pylindol picks the
+  table whose rows look like PHIVOLCS timestamps and maps its columns by
+  position, so all of these parse the same way.
+- **The current month.** The main page lists the current month and, until
+  PHIVOLCS archives it, the previous one. pylindol filters the page to the
+  month you asked for, and reads last month from the main page while its
+  archive page doesn't exist yet.
+- **TLS.** Some PHIVOLCS servers don't send the intermediate certificate
+  their certificate chain needs, so a standard `requests` call fails
+  verification. pylindol ships that intermediate (GlobalSign RSA OV SSL CA
+  2018) and loads it, along with certifi's CAs, into an in-memory SSL
+  context. Nothing is written to disk, and verification is never turned off.
+- **Being polite.** Requests send a `pylindol` User-Agent, time out, retry
+  transient errors with backoff, and range scrapes wait between months.
+  Please don't lower `--delay` for large ranges; PHIVOLCS is a public
+  service.
 
 ## Development
-
-Run from source:
 
 ```bash
 git clone git@github.com:clnhrn/pylindol.git
 cd pylindol
 uv sync
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 
-# Run the tests
-uv run pytest
+uv run pytest            # unit tests, using saved PHIVOLCS pages
+uv run pytest -m live    # tests against the real website
+uv run ruff check . && uv run mypy
 ```
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org).
+Merging to `main` opens a version bump PR, and merging that PR tags the
+release and publishes it to PyPI.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [MIT License](https://github.com/clnhrn/pylindol/blob/main/LICENSE).
