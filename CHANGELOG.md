@@ -1,3 +1,17 @@
+## 0.6.0 (2026-10-09)
+
+### BREAKING CHANGE
+
+- output columns are now datetime, date, time, latitude,
+longitude, depth_km, magnitude and location, with numeric types and a
+timezone-aware datetime. pylindol.utils.CertificateHandler is removed.
+export_to_csv is deprecated in favor of export. Years before 2017 are
+rejected, and non-integer month/year raise TypeError.
+
+### Feat
+
+- normalized columns, date ranges, JSON/Parquet output, safer HTTP
+
 ## 0.5.2 (2026-06-12)
 
 ### Refactor
