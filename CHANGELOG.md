@@ -1,3 +1,9 @@
+## 0.6.1 (2026-10-09)
+
+### Fix
+
+- **deps**: require urllib3 2.8.0 for security fixes
+
 ## 0.6.0 (2026-10-09)
 
 ### BREAKING CHANGE
