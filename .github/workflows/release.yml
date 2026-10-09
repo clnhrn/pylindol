@@ -1,0 +1,98 @@
+name: Release
+
+# On every push to main:
+# - If pyproject's version has no tag yet, a version bump PR was just merged:
+#   tag it, which triggers publish.yml.
+# - Otherwise, if the new commits warrant a release, open a version bump PR.
+#   Nothing is tagged or published until that PR is merged into main.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A PAT, so the pushed tag and PR trigger other workflows.
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.24"
+          python-version: "3.13"
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Tag a merged version bump
+        id: tag
+        run: |
+          VERSION=$(uv version --short)
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "tagged=false" >> "$GITHUB_OUTPUT"
+          else
+            git tag -a "$VERSION" -m "$VERSION"
+            git push origin "$VERSION"
+            echo "tagged=true" >> "$GITHUB_OUTPUT"
+            echo "Tagged $VERSION; publish.yml will release it." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Check for an open version bump PR
+        id: pending
+        if: steps.tag.outputs.tagged == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          OPEN=$(gh pr list --state open --base main --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("release/"))] | length')
+          echo "open=$OPEN" >> "$GITHUB_OUTPUT"
+          if [ "$OPEN" -ne 0 ]; then
+            echo "A version bump PR is already open; merge it first." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Bump version on a release branch
+        id: bump
+        if: steps.tag.outputs.tagged == 'false' && steps.pending.outputs.open == '0'
+        run: |
+          git switch -c bump-tmp
+          EXIT=0
+          uvx --from commitizen==4.19.2 cz bump --yes || EXIT=$?
+          if [ "$EXIT" -eq 0 ]; then
+            NEW_VERSION=$(uv version --short)
+            # The tag is created when the PR merges, not here.
+            git tag -d "$NEW_VERSION"
+            git branch -m "release/$NEW_VERSION"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          elif [ "$EXIT" -eq 21 ]; then
+            # NoneIncrementExit: no commits warranted a bump.
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            exit "$EXIT"
+          fi
+
+      - name: Push branch and open PR
+        if: steps.bump.outputs.bumped == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          git push origin "release/$VERSION"
+          gh pr create \
+            --base main \
+            --head "release/$VERSION" \
+            --title "bump: version $VERSION" \
+            --body "Automated version bump to \`$VERSION\`. Merging this tags \`$VERSION\` and publishes it to PyPI."
+          gh pr merge "release/$VERSION" --auto --merge \
+            || echo "Auto-merge unavailable; merge the PR manually."
