@@ -1,8 +1,8 @@
 # pylindol
 
 [![CI](https://github.com/clnhrn/pylindol/actions/workflows/ci.yml/badge.svg)](https://github.com/clnhrn/pylindol/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/pylindol)](https://pypi.org/project/pylindol/)
-[![Python versions](https://img.shields.io/pypi/pyversions/pylindol)](https://pypi.org/project/pylindol/)
+[![PyPI version](https://img.shields.io/pypi/v/pylindol?cacheSeconds=3600)](https://pypi.org/project/pylindol/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pylindol?cacheSeconds=3600)](https://pypi.org/project/pylindol/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/clnhrn/pylindol/blob/main/LICENSE)
 
 pylindol scrapes earthquake data from the
