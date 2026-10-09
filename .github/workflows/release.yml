@@ -29,6 +29,9 @@ jobs:
         with:
           version: "0.12.24"
           python-version: "3.13"
+          # A tag-only run downloads nothing, and saving an empty cache fails
+          # the job in setup-uv's post step.
+          enable-cache: false
 
       - name: Configure git
         run: |
