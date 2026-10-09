@@ -1,127 +1,177 @@
 """Tests for the CLI interface."""
 
+import json
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
+import requests
 import responses
 from click.testing import CliRunner
+from conftest import BASE_URL, archive_url, load_page
 from loguru import logger
 
+from pylindol import __version__
 from pylindol.cli import _configure_logging, main
-from pylindol.earthquake_info_scraper import PhivolcsEarthquakeInfoScraper
+from pylindol.earthquake_info_scraper import (
+    OUTPUT_COLUMNS,
+    PhivolcsEarthquakeInfoScraper,
+)
+
+
+@pytest.fixture
+def runner():
+    return CliRunner()
+
+
+@pytest.fixture
+def august_2025():
+    responses.add(
+        responses.GET,
+        archive_url(2025, "August"),
+        body=load_page("archive_2025_August"),
+    )
 
 
 class TestCLI:
-    """Test CLI functionality."""
+    """Command line behavior."""
 
-    def test_cli_help(self):
-        """Test that CLI help command works."""
-        runner = CliRunner()
+    def test_help(self, runner):
         result = runner.invoke(main, ["--help"])
-
         assert result.exit_code == 0
-        expected = "Scrape earthquake information from PHIVOLCS website"
-        assert expected in result.output
-        assert "--month" in result.output
-        assert "--year" in result.output
-        assert "--output-path" in result.output
+        assert (
+            "Scrape earthquake information from the PHIVOLCS website" in result.output
+        )
+        for option in ("--month", "--year", "--start", "--end", "--format", "--stdout"):
+            assert option in result.output
+
+    def test_version(self, runner):
+        result = runner.invoke(main, ["--version"])
+        assert result.exit_code == 0
+        assert __version__ in result.output
 
     @responses.activate
-    def test_cli_with_valid_options(self, tmp_path, monkeypatch):
-        """Test CLI with valid month and year options."""
-        # Mock the HTTP response
-        mock_html = """
-        <html>
-            <body>
-                <table><tr><td>Table 1</td></tr></table>
-                <table><tr><td>Table 2</td></tr></table>
-                <table>
-                    <tr><th>Date - Time  (Philippine Time)</th><th>Magnitude</th></tr>
-                    <tr><td>2025-08-01 09:15:00</td><td>5.0</td></tr>
-                </table>
-            </body>
-        </html>
-        """
-
-        url = (
-            "https://earthquake.phivolcs.dost.gov.ph/"
-            "EQLatest-Monthly/2025/2025_August.html"
-        )
-        responses.add(
-            responses.GET,
-            url,
-            body=mock_html,
-            status=200,
-        )
-
-        runner = CliRunner()
+    def test_writes_csv_for_month(self, runner, tmp_path, august_2025):
         result = runner.invoke(
             main, ["--month", "8", "--year", "2025", "--output-path", str(tmp_path)]
         )
-
-        # Should succeed
-        assert result.exit_code == 0
-
-        # Check that CSV file was created
-        import os
-
-        csv_files = [f for f in os.listdir(tmp_path) if f.endswith(".csv")]
-        assert len(csv_files) == 1
-        assert "phivolcs_earthquake_data_8_2025.csv" in csv_files[0]
-
-    def test_cli_with_invalid_month(self):
-        """Test CLI rejects invalid month."""
-        runner = CliRunner()
-        result = runner.invoke(main, ["--month", "13", "--year", "2025"])
-
-        # Should fail with error
-        assert result.exit_code != 0
-
-    def test_cli_with_only_month(self):
-        """Test CLI rejects month without year."""
-        runner = CliRunner()
-        result = runner.invoke(main, ["--month", "8"])
-
-        # Should fail with error
-        assert result.exit_code != 0
-        # Check that exception was raised (it won't be in output with Click)
-        assert isinstance(result.exception, ValueError)
+        assert result.exit_code == 0, result.output
+        df = pd.read_csv(tmp_path / "phivolcs_earthquake_data_8_2025.csv")
+        assert list(df.columns) == OUTPUT_COLUMNS
+        assert len(df) == 7
 
     @responses.activate
-    def test_cli_shows_friendly_error_when_data_unavailable(self, tmp_path):
-        """Unavailable months show a clean message instead of a traceback."""
-        # No <th>, so pandas assigns integer columns: the unavailable-month case.
-        mock_html = """
-        <html>
-            <body>
-                <table><tr><td>Table 1</td></tr></table>
-                <table><tr><td>Table 2</td></tr></table>
-                <table>
-                    <tr><td>Date - Time  (Philippine Time)</td><td>Magnitude</td></tr>
-                </table>
-            </body>
-        </html>
-        """
+    def test_current_month_by_default(self, runner, tmp_path):
+        responses.add(responses.GET, BASE_URL, body=load_page("main_page_2026_10"))
+        result = runner.invoke(main, ["--output-path", str(tmp_path)])
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / "phivolcs_earthquake_data_10_2026.csv").exists()
 
-        url = (
-            "https://earthquake.phivolcs.dost.gov.ph/"
-            "EQLatest-Monthly/2017/2017_January.html"
-        )
-        responses.add(responses.GET, url, body=mock_html, status=200)
-
-        runner = CliRunner()
+    @responses.activate
+    @pytest.mark.parametrize("fmt", ["json", "parquet"])
+    def test_other_formats(self, runner, tmp_path, august_2025, fmt):
         result = runner.invoke(
-            main, ["--month", "1", "--year", "2017", "--output-path", str(tmp_path)]
+            main,
+            ["--month", "8", "--year", "2025", "--format", fmt]
+            + ["--output-path", str(tmp_path)],
         )
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / f"phivolcs_earthquake_data_8_2025.{fmt}").exists()
 
-        assert result.exit_code != 0
+    @responses.activate
+    def test_stdout_json(self, runner, tmp_path, monkeypatch, august_2025):
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(
+            main,
+            ["--month", "8", "--year", "2025", "--stdout", "--format", "json", "-q"],
+        )
+        assert result.exit_code == 0, result.output
+        assert len(json.loads(result.stdout)) == 7
+        assert list(tmp_path.iterdir()) == []
+
+    @responses.activate
+    def test_stdout_csv(self, runner, august_2025):
+        result = runner.invoke(
+            main, ["--month", "8", "--year", "2025", "--stdout", "-q"]
+        )
+        assert result.exit_code == 0, result.output
+        assert result.stdout.splitlines()[0] == ",".join(OUTPUT_COLUMNS)
+
+    @responses.activate
+    def test_range(self, runner, tmp_path, august_2025):
+        responses.add(responses.GET, archive_url(2025, "September"), status=404)
+        result = runner.invoke(
+            main,
+            ["--start", "2025-08", "--end", "2025-09", "--output-path", str(tmp_path)],
+        )
+        assert result.exit_code == 0, result.output
+        df = pd.read_csv(tmp_path / "phivolcs_earthquake_data_8_2025_to_9_2025.csv")
+        assert len(df) == 7
+        assert "Skipping" in result.stderr
+
+    @pytest.mark.parametrize(
+        "args, message",
+        [
+            (["--month", "13", "--year", "2025"], "1<=x<=12"),
+            (["--month", "8"], "year must also be provided"),
+            (["--month", "12", "--year", "2016"], "archives start in January 2017"),
+            (["--month", "12", "--year", "2026"], "in the future"),
+            (["--start", "2025-01"], "--start and --end must be used together"),
+            (["--start", "2025-01", "--end", "2025/02"], "YYYY-MM"),
+            (["--start", "2025-03", "--end", "2025-01"], "must not be after"),
+            (
+                ["--start", "2025-01", "--end", "2025-02", "--month", "1"],
+                "not both",
+            ),
+            (["--stdout", "--format", "parquet"], "not parquet"),
+        ],
+    )
+    def test_invalid_input_is_a_usage_error(self, runner, args, message):
+        result = runner.invoke(main, args)
+        assert result.exit_code == 2
+        assert message in result.output
+        assert "Traceback" not in result.output
+
+    @responses.activate
+    def test_data_unavailable_is_a_friendly_error(self, runner, tmp_path):
+        responses.add(responses.GET, archive_url(2025, "August"), status=404)
+        result = runner.invoke(
+            main, ["--month", "8", "--year", "2025", "--output-path", str(tmp_path)]
+        )
+        assert result.exit_code == 1
         assert "not available" in result.output
-        # A friendly Click error, not an unhandled traceback.
-        assert result.exc_info is None or result.exception.__class__.__name__ != "AttributeError"
+        assert "Traceback" not in result.output
+
+    @responses.activate
+    def test_network_error_is_a_friendly_error(self, runner):
+        responses.add(
+            responses.GET,
+            archive_url(2025, "August"),
+            body=requests.ConnectionError("connection refused"),
+        )
+        result = runner.invoke(main, ["--month", "8", "--year", "2025"])
+        assert result.exit_code == 1
+        assert "Could not get data from PHIVOLCS" in result.output
+
+    @responses.activate
+    def test_missing_pyarrow_is_a_friendly_error(self, runner, tmp_path, mocker):
+        responses.add(
+            responses.GET,
+            archive_url(2025, "August"),
+            body=load_page("archive_2025_August"),
+        )
+        mocker.patch.object(pd.DataFrame, "to_parquet", side_effect=ImportError)
+        result = runner.invoke(
+            main,
+            ["--month", "8", "--year", "2025", "--format", "parquet"]
+            + ["--output-path", str(tmp_path)],
+        )
+        assert result.exit_code == 1
+        assert "pylindol[parquet]" in result.output
 
 
 class TestLoggingBehavior:
-    """Test logging configuration and the library's silent-by-default behavior."""
+    """Logging configuration and the library's silent-by-default behavior."""
 
     @pytest.mark.parametrize(
         "verbose, quiet, expected_level",
@@ -132,8 +182,7 @@ class TestLoggingBehavior:
             (True, True, "DEBUG"),  # verbose wins over quiet
         ],
     )
-    def test_configure_logging_sets_expected_level(self, verbose, quiet, expected_level):
-        """The verbosity flags map to the right loguru level and enable pylindol."""
+    def test_configure_logging_sets_level(self, verbose, quiet, expected_level):
         with patch("pylindol.cli.logger") as mock_logger:
             _configure_logging(verbose=verbose, quiet=quiet)
 
@@ -142,14 +191,14 @@ class TestLoggingBehavior:
         _, kwargs = mock_logger.add.call_args
         assert kwargs["level"] == expected_level
 
-    def test_library_logs_suppressed_when_disabled(self):
+    @responses.activate
+    def test_library_logs_suppressed_when_disabled(self, august_2025):
         """With pylindol disabled (the default), its logs reach no caller sink."""
         logger.disable("pylindol")
         messages = []
         sink_id = logger.add(messages.append, level="DEBUG")
         try:
-            # Construction logs at DEBUG inside the pylindol package.
-            PhivolcsEarthquakeInfoScraper(month=8, year=2025, export_to_csv=False)
+            PhivolcsEarthquakeInfoScraper(month=8, year=2025, export=False).run()
         finally:
             logger.remove(sink_id)
 

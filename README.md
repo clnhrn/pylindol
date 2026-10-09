@@ -86,8 +86,8 @@ the file and only return the DataFrame:
 scraper = PhivolcsEarthquakeInfoScraper(
     month=8,
     year=2025,
-    output_path="archive",   # CSV output directory
-    export_to_csv=False,     # return the DataFrame only
+    output_path="archive",  # CSV output directory
+    export_to_csv=False,  # return the DataFrame only
 )
 df = scraper.run()
 ```
