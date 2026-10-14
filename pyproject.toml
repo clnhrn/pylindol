@@ -50,20 +50,20 @@ Changelog = "https://github.com/clnhrn/pylindol/blob/main/CHANGELOG.md"
 pylindol = "pylindol.cli:main"
 
 [build-system]
-requires = ["uv_build>=0.10.0,<0.13"]
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
     "mypy>=1.13",
-    "pandas-stubs>=2.2,<3",
-    "pre-commit>=4.3.0",
+    "pandas-stubs>=3.0.5.260914,<4",
+    "pre-commit>=4.6.2",
     "pyarrow>=17.0",
-    "pytest>=9.0.3",
+    "pytest>=9.1.1",
     "pytest-cov>=7.0.0",
-    "pytest-mock>=3.12.0",
-    "responses>=0.25.0",
-    "ruff>=0.16",
+    "pytest-mock>=3.16.0",
+    "responses>=0.26.3",
+    "ruff>=0.17.0",
     "types-requests>=2.32",
 ]
 
